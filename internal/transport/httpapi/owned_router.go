@@ -241,6 +241,17 @@ func (g *ownedGroup) handle(method, path string, handlers ...gin.HandlerFunc) {
 			descriptor.Audit = "required-command+outbox"
 		}
 	}
+	if strings.HasPrefix(operation, "http.web_companion.agent.") {
+		descriptor.Auth = "opaque-client-token+current-bound-user-session+package-grant+user-consent"
+		if operation == "http.web_companion.agent.connect" {
+			descriptor.Auth = "one-use-client-pair+current-bound-user-session+package-grant+user-consent"
+		}
+		descriptor.Audit = "request-log-no-content"
+	}
+	if operation == "http.web_companion.user.download" {
+		descriptor.Auth = "jwt+current-user-session"
+		descriptor.Audit = "request-log-read"
+	}
 	if operation == "http.plugin.v5.user.ui_action" {
 		descriptor.Auth = "jwt+current-user-session+current-ui-proof+package-grant+user-consent+browser-csrf"
 		descriptor.Audit = "request-log-no-content"

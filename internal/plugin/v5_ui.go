@@ -18,6 +18,7 @@ type V5UIFacts struct {
 	Generation       string             `json:"generation"`
 	GlobalGeneration string             `json:"global_generation"`
 	Proof            string             `json:"proof"`
+	ClientProof      string             `json:"-"`
 	AuthorityProof   string             `json:"authority_proof"`
 	Artifact         PluginV5UIArtifact `json:"artifact"`
 }
@@ -138,13 +139,19 @@ func (s *V5Platform) withUI(ctx context.Context, c V5Coordinate, admin bool, res
 				return "0"
 			}()}
 			proof, _ := json.Marshal(binding)
+			clientBinding := binding
+			clientBinding.Generation = v5Counter(installation.CompanionGeneration)
+			clientBinding.GlobalGeneration = v5Counter(global.CompanionGeneration)
+			clientBinding.ConfigRevision = ""
+			clientBinding.SystemConfigRevision = ""
+			clientProof, _ := json.Marshal(clientBinding)
 			// Resource contexts belong to their current owner, and can be opened
 			// after a valid session rotation (including the same owner's new tab).
 			// Asset leases and Bridge sessions additionally pin the credential.
 			binding.Principal.CredentialID = ""
 			binding.Principal.AuthenticationStrength = ""
 			authority, _ := json.Marshal(binding)
-			facts := V5UIFacts{V5Coordinate: c, PackageDigest: p.Digest, Generation: v5Counter(installation.Generation), GlobalGeneration: v5Counter(global.Generation), Proof: v5BytesDigest(proof), AuthorityProof: v5BytesDigest(authority), Artifact: *artifact}
+			facts := V5UIFacts{V5Coordinate: c, PackageDigest: p.Digest, Generation: v5Counter(installation.Generation), GlobalGeneration: v5Counter(global.Generation), Proof: v5BytesDigest(proof), ClientProof: v5BytesDigest(clientProof), AuthorityProof: v5BytesDigest(authority), Artifact: *artifact}
 			return body(facts, p)
 		})
 	})

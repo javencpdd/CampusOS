@@ -15,8 +15,9 @@ const PluginV5ManifestMaxBytes = 1 << 20
 
 // v5JSON reads untrusted contract bytes without case folding, duplicate keys,
 // replacement Unicode, unbounded nesting, or a second JSON document.
-func v5JSON(raw []byte) (any, bool) {
-	if len(raw) == 0 || len(raw) > PluginV5ManifestMaxBytes || !utf8.Valid(raw) || !v5Unicode(raw) {
+func v5JSON(raw []byte) (any, bool) { return v5JSONAtMost(raw, PluginV5ManifestMaxBytes) }
+func v5JSONAtMost(raw []byte, max int) (any, bool) {
+	if len(raw) == 0 || len(raw) > max || !utf8.Valid(raw) || !v5Unicode(raw) {
 		return nil, false
 	}
 	d := json.NewDecoder(bytes.NewReader(raw))

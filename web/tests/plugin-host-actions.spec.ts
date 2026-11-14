@@ -6,10 +6,11 @@ const fixture = vi.hoisted(() => ({
   preview: vi.fn(),
   upload: vi.fn(),
   confirm: vi.fn(),
+  download: vi.fn(),
   token: 'alice',
 }))
 vi.mock('../src/modules/plugin-center/v5-api', () => ({
-  pluginV5Api: { uiAction: fixture.action, configure: fixture.configure },
+  pluginV5Api: { uiAction: fixture.action, configure: fixture.configure, companionTool: fixture.download },
 }))
 vi.mock('../src/modules/richtext/api', () => ({
   richTextApi: { preview: fixture.preview, uploadAsset: fixture.upload },
@@ -45,15 +46,28 @@ beforeEach(() => {
   vi.useFakeTimers()
   vi.clearAllMocks()
   fixture.token = 'alice'
+  sessionStorage.clear()
   fixture.confirm.mockResolvedValue(true)
   fixture.action.mockImplementation(async (_c, q) => ({
     code: 0,
-    data: q.action === 'web.read' ? { bytes: btoa('owned-image'), mime: 'image/png' } : { authorized: true },
+    data:
+      q.action === 'web.clients.status'
+        ? { scope: 'sha256:' + 'a'.repeat(64), clients: [], local_available: true }
+        : q.action === 'web.read'
+          ? { bytes: btoa('owned-image'), mime: 'image/png' }
+          : { authorized: true },
   }))
   fixture.preview.mockImplementation(async (html) => ({ data: { sanitized_html: html } }))
   fixture.upload.mockResolvedValue({ data: { file_url: '/api/v1/richtext/assets/123/content' } })
 })
 afterEach(() => vi.useRealTimers())
+it('requires host confirmation before downloading an executable', async () => {
+  fixture.confirm.mockRejectedValue('cancel')
+  await expect(
+    handlePluginHostAction(surface, request('web.clients.download', { platform: 'windows-amd64' }), vi.fn()),
+  ).rejects.toBe('cancel')
+  expect(fixture.download).not.toHaveBeenCalled()
+})
 it('uses a generic public reader for a publisher unknown to the host', async () => {
   const result: any = await handlePluginHostAction(
     surface,
@@ -61,7 +75,7 @@ it('uses a generic public reader for a publisher unknown to the host', async () 
     vi.fn().mockResolvedValue(undefined),
   )
   expect(new TextDecoder().decode(result.bytes)).toBe('owned-image')
-  expect(fixture.action.mock.calls[0]).toEqual([
+  expect(fixture.action.mock.calls.find((call) => call[1].action === 'web.read')).toEqual([
     { publisher: 'example', plugin_key: 'news-reader', version: '2.0.0' },
     { proof: 'current', action: 'web.read', url: 'https://public.example/page', kind: 'document' },
   ])
@@ -69,7 +83,7 @@ it('uses a generic public reader for a publisher unknown to the host', async () 
     await expect(
       handlePluginHostAction(surface, request('web.read', { url, kind: 'document' }), vi.fn()),
     ).rejects.toThrow()
-  expect(fixture.action).toHaveBeenCalledTimes(1)
+  expect(fixture.action.mock.calls.filter((call) => call[1].action === 'web.read')).toHaveLength(1)
 })
 it('rejects server proxy selectors and endpoints from a user plugin', async () => {
   for (const extra of [{ profile: 'clash' }, { proxy: 'http://127.0.0.1:7890' }]) {
@@ -99,6 +113,56 @@ it('saves arbitrary declared configuration without a feed-field convention', asy
     { layout: 'compact' },
     'current',
   )
+})
+it('keeps local selection across configuration reload and blocks implicit server fallback', async () => {
+  const scope = 'sha256:' + 'a'.repeat(64),
+    id = 'b'.repeat(32)
+  fixture.action.mockImplementation(async (_c, q) => ({
+    code: 0,
+    data: q.action.startsWith('web.clients.')
+      ? { scope, local_available: true, clients: [{ id, name: 'My PC', online: true, proxy_mode: 'socks5' }] }
+      : { bytes: btoa('local'), mime: 'text/plain' },
+  }))
+  await handlePluginHostAction(surface, request('web.clients.select', { client_id: id }), vi.fn())
+  const state: any = await handlePluginHostAction(
+    { ...surface, context_proof: 'new-config' },
+    request('web.clients.status', {}),
+    vi.fn(),
+  )
+  expect(state.selected_client_id).toBe(id)
+  await expect(
+    handlePluginHostAction(
+      surface,
+      request('web.read', { url: 'https://public.example/document', kind: 'document' }),
+      vi.fn(),
+    ),
+  ).rejects.toThrow('读取位置已变化')
+  await handlePluginHostAction(
+    surface,
+    request('web.read', { url: 'https://public.example/document', kind: 'document', client_id: id }),
+    vi.fn(),
+  )
+  expect(fixture.action.mock.calls.at(-1)?.[1]).toMatchObject({ action: 'web.read', client_id: id })
+  await handlePluginHostAction(surface, request('web.clients.disconnect', { client_id: id }), vi.fn())
+  expect(sessionStorage.getItem('campusos.web-client.' + scope)).toBe(id)
+})
+it('routes preview and imported images through the same explicitly selected client', async () => {
+  const id = 'b'.repeat(32),
+    scope = 'sha256:' + 'a'.repeat(64)
+  sessionStorage.setItem('campusos.web-client.' + scope, id)
+  const imported = article()
+  imported.params.client_id = id
+  await handlePluginHostAction(surface, imported, vi.fn(), vi.fn().mockResolvedValue(undefined))
+  const calls = fixture.action.mock.calls.map((call) => call[1])
+  expect(calls).toContainEqual({ proof: 'current', action: 'editor.article.import', client_id: id })
+  expect(calls).toContainEqual({
+    proof: 'current',
+    action: 'web.read',
+    kind: 'image',
+    url: 'https://public.example/photo.png',
+    client_id: id,
+  })
+  expect(calls.some((call) => call.proxy || call.profile || call.media_profile)).toBe(false)
 })
 it('creates only an owner-bound handoff after confirmation, image copy and sanitization', async () => {
   const open = vi.fn().mockResolvedValue(undefined)

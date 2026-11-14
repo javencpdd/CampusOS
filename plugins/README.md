@@ -20,4 +20,4 @@ go run ./cmd/campusos-plugin-v5-check -root plugins
 
 - `campusos.ai-knowledge/`：14c双向Go SDK示例，单独批准的本机/远程模型与公开问答Host消费，以及由Knowledge重核当前原来源的公开贡献；[构建与授权](campusos.ai-knowledge/README.md)。更新时间：2026-10-25（Asia/Shanghai）。
 
-- `campusos.rss-publisher/`：2.0.0 RSS/Atom 个人订阅，解析与界面完全在包内；通用 Host API、opaque 沙箱，无需本机助手/启动器；图文导入后手动发布；[构建与安装](campusos.rss-publisher/README.md)。更新时间：2026-11-15（Asia/Shanghai）。
+- `campusos.rss-publisher/`：2.1.0 RSS/Atom 个人订阅，解析与界面完全在包内；通用 Host API、opaque 沙箱，默认服务器读取无需助手，支持可选通用本机助手；图文导入后手动发布；[构建与安装](campusos.rss-publisher/README.md)。更新时间：2026-11-15（Asia/Shanghai）。

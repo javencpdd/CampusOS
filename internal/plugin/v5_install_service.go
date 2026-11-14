@@ -830,6 +830,9 @@ func (s *V5Platform) queueInstall(ctx context.Context, i *V5Installation, op *V5
 		return err
 	}
 	i.Generation = n
+	if op.Kind != "configure" {
+		i.CompanionGeneration = n
+	}
 	i.PendingDataGeneration = 0
 	if i.Desired != "enabled" && (op.Kind == "disable" || op.Kind == "uninstall" || op.Kind == "revoke" || op.Kind == "grant") {
 		i.DesiredVersion = i.Version

@@ -153,13 +153,16 @@ func TestOpaqueUIAssetsNeedCurrentLeaseAndEnforceSandbox(t *testing.T) {
 	}
 }
 func newUIActionFixture(t *testing.T) (v5TestPlatform, identity.SessionPrincipalResolver, *V5HTTPHandler) {
+	return newUIActionClientFixture(t, true)
+}
+func newUIActionClientFixture(t *testing.T, allowLocal bool) (v5TestPlatform, identity.SessionPrincipalResolver, *V5HTTPHandler) {
 	t.Helper()
 	v := newV5TestPlatform(t)
 	v.manifest.Data.ConfigScope = "user"
 	v.manifest.UI[0].Isolation = "opaque"
 	v.manifest.Consumes = []PluginV5Consume{}
-	for _, code := range []string{"ui.surface.open", V5WebPublicRead, V5ArticleCompose} {
-		v.manifest.Consumes = append(v.manifest.Consumes, PluginV5Consume{Capability: code, Scope: PluginV5ConsumeScope{Kind: "self"}, Purpose: "Read public documents or prepare user-confirmed content", Required: true})
+	for _, code := range []string{"ui.surface.open", V5WebPublicRead, V5ArticleCompose, V5WebLocalRead} {
+		v.manifest.Consumes = append(v.manifest.Consumes, PluginV5Consume{Capability: code, Scope: PluginV5ConsumeScope{Kind: "self"}, Purpose: "Read public documents or prepare user-confirmed content", Required: code != V5WebLocalRead})
 	}
 	v.manifest.Configuration = json.RawMessage(`{"contract":"campusos.plugin-config/v1","version":"v1","schema":{"type":"object","additionalProperties":false,"properties":{"endpoint":{"type":"string","title":"Endpoint","maxLength":512}},"required":["endpoint"]},"defaults":{"endpoint":"https://public.example/document.xml"},"selectors":[],"secret_names":[]}`)
 	wire, _ := json.Marshal(v.manifest)
@@ -184,7 +187,13 @@ func newUIActionFixture(t *testing.T) (v5TestPlatform, identity.SessionPrincipal
 	v.envelope = envelope
 	v.c = V5Coordinate{p.Manifest.Publisher, p.Manifest.Key, p.Manifest.Version}
 	v.installed(t)
-	v.mutate(t, V5Mutation{Kind: "grant", Approved: true, Consumes: v.manifest.Consumes, IdempotencyKey: "public-grant"}, true, v.admin)
+	consumes := []PluginV5Consume{}
+	for _, c := range v.manifest.Consumes {
+		if allowLocal || c.Capability != V5WebLocalRead {
+			consumes = append(consumes, c)
+		}
+	}
+	v.mutate(t, V5Mutation{Kind: "grant", Approved: true, Consumes: consumes, IdempotencyKey: "public-grant"}, true, v.admin)
 	global, _ := v.s.installation(context.Background(), v.c, "")
 	v.mutate(t, V5Mutation{Kind: "enable", ExpectedGeneration: global.Generation, IdempotencyKey: "rss-global-on"}, true, v.admin)
 	user := v5TestProof("user", "1001")

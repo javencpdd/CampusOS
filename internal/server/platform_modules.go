@@ -299,7 +299,7 @@ func (m *pluginPlatformModule) Start(ctx context.Context) error {
 	m.platform = plugin.NewV5Platform(m.stateStore, m.files, m.catalog, reliable, admins)
 	users, _ := m.app.Lookup("identity.user-reader")
 	m.platform.Users, _ = users.(identityport.UserReader)
-	m.v5Handler = &plugin.V5HTTPHandler{Platform: m.platform, ValidatePublicImage: func(raw []byte) ([]byte, string, error) {
+	m.v5Handler = &plugin.V5HTTPHandler{Platform: m.platform, CompanionToolsDir: m.owner.cfg.Plugin.CompanionToolsDir, ValidatePublicImage: func(raw []byte) ([]byte, string, error) {
 		image, err := corestorage.OptimizeImageWithin(raw, 1280)
 		if err != nil {
 			return nil, "", err

@@ -30,6 +30,7 @@ type V5PackageRelease struct {
 	Revision int64           `json:"revision,string"`
 }
 type V5Installation struct {
+	CompanionGeneration   int64        `json:"companion_generation,string,omitempty"`
 	Publisher             string       `json:"publisher"`
 	Key                   string       `json:"plugin_key"`
 	Owner                 string       `json:"owner_user_id"`

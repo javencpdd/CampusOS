@@ -419,6 +419,7 @@ func v5InstallationOpenAPISchemas() string {
           - ready
           - failed
           - stopped
+        companion_generation: {type: string, pattern: '^[0-9]+$'}
         generation:
           type: string
           pattern: ^(0|[1-9][0-9]{0,18})$

@@ -94,14 +94,15 @@ type EmailConfig struct {
 }
 
 type PluginConfig struct {
-	WebProxyProfiles string
-	WebProxyProfile  string
-	DataDir          string
-	WasmImage        string
-	ContainerEnabled bool
-	UIListen         string
-	UIOrigin         string
-	UIParents        []string
+	CompanionToolsDir string
+	WebProxyProfiles  string
+	WebProxyProfile   string
+	DataDir           string
+	WasmImage         string
+	ContainerEnabled  bool
+	UIListen          string
+	UIOrigin          string
+	UIParents         []string
 }
 
 // DeploymentConfig makes local-provider safety explicit. v0.9 supports one
@@ -243,14 +244,15 @@ func Load() *Config {
 			SMTPStartTLS: getBool("EMAIL_SMTP_STARTTLS", true),
 		},
 		Plugin: PluginConfig{
-			WebProxyProfiles: get("CAMPUSOS_PLUGIN_WEB_PROXY_PROFILES", ""),
-			WebProxyProfile:  get("CAMPUSOS_PLUGIN_WEB_PROXY_PROFILE", ""),
-			DataDir:          get("PLUGIN_DATA_DIR", "data/plugin_data"),
-			WasmImage:        strings.TrimSpace(get("CAMPUSOS_PLUGIN_WASM_IMAGE", "")),
-			ContainerEnabled: getBool("CAMPUSOS_PLUGIN_CONTAINER_ENABLED", false),
-			UIListen:         strings.TrimSpace(get("CAMPUSOS_PLUGIN_UI_LISTEN", "")),
-			UIOrigin:         strings.TrimSpace(get("CAMPUSOS_PLUGIN_UI_ORIGIN", "")),
-			UIParents:        strings.Fields(get("CAMPUSOS_PLUGIN_UI_PARENTS", "")),
+			CompanionToolsDir: get("CAMPUSOS_WEB_COMPANION_TOOLS_DIR", ".campusos/tools/web-companion"),
+			WebProxyProfiles:  get("CAMPUSOS_PLUGIN_WEB_PROXY_PROFILES", ""),
+			WebProxyProfile:   get("CAMPUSOS_PLUGIN_WEB_PROXY_PROFILE", ""),
+			DataDir:           get("PLUGIN_DATA_DIR", "data/plugin_data"),
+			WasmImage:         strings.TrimSpace(get("CAMPUSOS_PLUGIN_WASM_IMAGE", "")),
+			ContainerEnabled:  getBool("CAMPUSOS_PLUGIN_CONTAINER_ENABLED", false),
+			UIListen:          strings.TrimSpace(get("CAMPUSOS_PLUGIN_UI_LISTEN", "")),
+			UIOrigin:          strings.TrimSpace(get("CAMPUSOS_PLUGIN_UI_ORIGIN", "")),
+			UIParents:         strings.Fields(get("CAMPUSOS_PLUGIN_UI_PARENTS", "")),
 		},
 		Deployment: DeploymentConfig{
 			InstanceMode: strings.ToLower(get("CAMPUSOS_INSTANCE_MODE", "single")),

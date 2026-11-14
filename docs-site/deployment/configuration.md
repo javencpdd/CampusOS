@@ -75,7 +75,7 @@ CAMPUSOS_PLUGIN_WEB_PROXY_PROFILE=clash-http
 
 签名包由 Admin 显式导入，受管存储位于 `PLUGIN_DATA_DIR/v5`，普通配置保存在 PostgreSQL；不扫描旧 `.installed` 或源码目录自动运行。
 
-声明 `isolation: "opaque"` 的 UI（如 RSS 2.0.0）仅需配置精确的 `CAMPUSOS_PLUGIN_UI_PARENTS`，通过本站只读资产接口加载，双重沙箱禁止同源权限，不需要通配 DNS 或额外监听。
+声明 `isolation: "opaque"` 的 UI（如 RSS 2.1.0）仅需配置精确的 `CAMPUSOS_PLUGIN_UI_PARENTS`，通过本站只读资产接口加载，双重沙箱禁止同源权限，不需要通配 DNS 或额外监听。
 
 未声明 opaque 的既有 UI 继续使用独立子域，需同时配置以下三项：
 
@@ -145,3 +145,9 @@ V12-06本地启动目录合同更新：Windows从系统API获取Program Files与
 2026-10-19：仓库提供`scripts/v12-06-windows-drill.ps1`原生验收入口，包含独占PG与HTTP/gRPC、当前授权、实际服务器恢复/正常关闭。需要真实Windows控制台及支持race的原生Go工具链；详细命令和前提见Container执行合同第6节及`.127`。Linux PowerShell只用于语法/拒绝路径验证，当前仍缺Windows实机结果，06保持进行中。
 
 2026-10-19 12:06：用户同意Windows相关内容延期，当前以已验收Linux范围推进后续开发，记录见仓库`.128`。Windows原生实机仍未验收，完整跨平台出口检查器保留；延期不会改变执行器默认关闭、本地daemon或隔离配置。
+
+## 本机助手下载目录
+
+最新更新时间：2026-11-15（Asia/Shanghai）。部署者独立执行 python3 scripts/build-web-companion.py，生成固定平台程序及 SHA256 清单；用 CAMPUSOS_WEB_COMPANION_TOOLS_DIR 指向 API 可读目录，默认 .campusos/tools/web-companion。容器须挂载已构建文件。插件安装、启用和卸载不构建或执行程序。
+
+本机读取为可选 web.local.read，需另行批准和本人同意。服务器不接收本机代理地址/口令；用户在自己电脑的助手中配置。普通服务器读取不依赖下载目录。用户步骤见[RSS 说明](/plugins/rss-publisher#可选本机抓取)，协议见仓库 docs/api/v1.2本机公开资源读取助手合同.md。

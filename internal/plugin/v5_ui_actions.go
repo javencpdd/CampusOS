@@ -6,29 +6,38 @@ import (
 	"net/http"
 	"net/url"
 	"reflect"
+	"strings"
 	"time"
 
 	identity "github.com/campusos/CampusOS/internal/modules/core/identity/port"
 	"github.com/campusos/CampusOS/internal/platform/security"
+	"github.com/campusos/CampusOS/internal/platform/webcompanion"
 	"github.com/campusos/CampusOS/pkg/response"
 	"github.com/gin-gonic/gin"
 )
 
+const V5WebLocalRead = "web.local.read"
 const V5WebPublicRead = "web.public.read"
 const V5ArticleCompose = "community.article.compose"
 
 var publicReadSlots = make(chan struct{}, 4)
 
 type V5UIActionRequest struct {
-	Proof  string `json:"proof"`
-	Action string `json:"action"`
-	URL    string `json:"url,omitempty"`
-	Kind   string `json:"kind,omitempty"`
+	ClientID string `json:"client_id,omitempty"`
+	Proof    string `json:"proof"`
+	Action   string `json:"action"`
+	URL      string `json:"url,omitempty"`
+	Kind     string `json:"kind,omitempty"`
 }
 type V5UIActionResult struct {
-	Authorized bool   `json:"authorized,omitempty"`
-	Bytes      []byte `json:"bytes,omitempty"`
-	MIME       string `json:"mime,omitempty"`
+	Clients        []webcompanion.Reader `json:"clients,omitempty"`
+	Scope          string                `json:"scope,omitempty"`
+	LocalAvailable bool                  `json:"local_available,omitempty"`
+	PairingCode    string                `json:"pairing_code,omitempty"`
+	ExpiresAt      int64                 `json:"expires_at,omitempty"`
+	Authorized     bool                  `json:"authorized,omitempty"`
+	Bytes          []byte                `json:"bytes,omitempty"`
+	MIME           string                `json:"mime,omitempty"`
 }
 
 // The platform enforces a published capability, never a plugin name, feed
@@ -91,6 +100,9 @@ func (h *V5HTTPHandler) uiAction(ctx context.Context, c V5Coordinate, q V5UIActi
 	if !v5Digest(q.Proof) {
 		return empty, ErrV5Invalid
 	}
+	if strings.HasPrefix(q.Action, "web.clients.") {
+		return h.clientAction(ctx, c, q, resolve)
+	}
 	capability := V5WebPublicRead
 	if q.Action == "editor.article.import" {
 		if q.URL != "" || q.Kind != "" {
@@ -105,6 +117,11 @@ func (h *V5HTTPHandler) uiAction(ctx context.Context, c V5Coordinate, q V5UIActi
 	if err := h.Platform.authorizeUIAction(ctx, c, q.Proof, capability, resolve); err != nil {
 		return empty, err
 	}
+	if q.ClientID != "" {
+		if err := h.Platform.authorizeUIAction(ctx, c, q.Proof, V5WebLocalRead, resolve); err != nil {
+			return empty, err
+		}
+	}
 	if q.Action == "editor.article.import" {
 		return V5UIActionResult{Authorized: true}, nil
 	}
@@ -115,7 +132,28 @@ func (h *V5HTTPHandler) uiAction(ctx context.Context, c V5Coordinate, q V5UIActi
 		return empty, ErrV5PlatformUnavailable
 	}
 	fetch := h.publicRead
-	if fetch == nil {
+	if q.ClientID != "" {
+		fetch = func(ctx context.Context, target string, max int64) ([]byte, string, error) {
+			owner, err := h.clientOwner(ctx, c, resolve)
+			if err != nil {
+				return nil, "", err
+			}
+			checkTarget := h.clientTarget
+			if checkTarget == nil {
+				checkTarget = webcompanion.ValidateTarget
+			}
+			if err := checkTarget(ctx, target); err != nil {
+				return nil, "", ErrV5Invalid
+			}
+			raw, err := h.clients().Fetch(ctx, owner, q.ClientID, target, max, func(check context.Context) bool {
+				return h.Platform.authorizeUIAction(check, c, q.Proof, V5WebLocalRead, resolve) == nil && h.Platform.authorizeUIAction(check, c, q.Proof, V5WebPublicRead, resolve) == nil
+			})
+			if err != nil {
+				return nil, "", ErrV5PlatformUnavailable
+			}
+			return raw, http.DetectContentType(raw), nil
+		}
+	} else if fetch == nil {
 		fetch = func(ctx context.Context, target string, max int64) ([]byte, string, error) {
 			return readPublicResourceVia(ctx, target, max, h.WebProxies, h.WebProxyProfile)
 		}
@@ -139,6 +177,11 @@ func (h *V5HTTPHandler) uiAction(ctx context.Context, c V5Coordinate, q V5UIActi
 	if err = h.Platform.authorizeUIAction(ctx, c, q.Proof, capability, resolve); err != nil {
 		return empty, err
 	}
+	if q.ClientID != "" {
+		if err = h.Platform.authorizeUIAction(ctx, c, q.Proof, V5WebLocalRead, resolve); err != nil {
+			return empty, err
+		}
+	}
 	return V5UIActionResult{Bytes: raw, MIME: mime}, nil
 }
 
@@ -153,7 +196,7 @@ func (h *V5HTTPHandler) UIAction(c *gin.Context) {
 	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 8192)
 	raw, err := io.ReadAll(c.Request.Body)
 	value, ok := v5JSON(raw)
-	shape := v5Object("proof action", map[string]v5Check{"proof": v5Digest, "action": v5Enum("web.read", "editor.article.import"), "url": v5String(1, 2048, `(?s)^.*$`), "kind": v5Enum("document", "image")})
+	shape := v5Object("proof action", map[string]v5Check{"client_id": v5String(32, 32, `^[a-f0-9]{32}$`), "proof": v5Digest, "action": v5Enum("web.read", "editor.article.import", "web.clients.status", "web.clients.pair", "web.clients.select", "web.clients.disconnect"), "url": v5String(1, 2048, `(?s)^.*$`), "kind": v5Enum("document", "image")})
 	var q V5UIActionRequest
 	if err != nil || !ok || !shape(value) || strictPluginV5JSON(raw, &q) != nil || c.Request.URL.RawQuery != "" {
 		v5HTTPError(c, ErrV5Invalid)

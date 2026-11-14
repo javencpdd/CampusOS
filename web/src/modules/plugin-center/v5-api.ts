@@ -19,6 +19,11 @@ export const pluginV5Api = {
     }),
   detail: (c: Coordinate) =>
     api.get<never, Envelope<ConfigEntry>>(`${family(c)}/${encodeURIComponent(c.version)}`, wire),
+  companionTool: (platform: string) =>
+    api.get<never, Blob>(`/web-companion/tools/${encodeURIComponent(platform)}`, {
+      responseType: 'blob',
+      timeout: 30000,
+    }),
   uiAction: (c: Coordinate, data: Record<string, unknown>) =>
     api.post<never, Envelope<any>>(`${family(c)}/${encodeURIComponent(c.version)}/ui-actions`, data, {
       timeout: 22000,

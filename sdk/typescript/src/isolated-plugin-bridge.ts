@@ -26,7 +26,12 @@ export interface PluginBridgeRequest {
     | "records.read"
     | "records.write"
     | "web.read"
-    | "editor.article.import";
+    | "editor.article.import"
+    | "web.clients.status"
+    | "web.clients.pair"
+    | "web.clients.select"
+    | "web.clients.disconnect"
+    | "web.clients.download";
   params: Record<string, unknown>;
 }
 
@@ -111,6 +116,11 @@ const allowedMethods = new Set<PluginBridgeRequest["method"]>([
   "records.write",
   "web.read",
   "editor.article.import",
+  "web.clients.status",
+  "web.clients.pair",
+  "web.clients.select",
+  "web.clients.disconnect",
+  "web.clients.download",
 ]);
 
 export function normalizePluginOrigin(value: string): string | undefined {
@@ -286,7 +296,14 @@ export async function dispatchPluginBridgeRequest(
       new Promise<never>((_, reject) => {
         timeout = setTimeout(
           () => reject(new Error("timeout")),
-          request.method === "editor.article.import" ? 180000 : 30000,
+          [
+            "editor.article.import",
+            "web.clients.pair",
+            "web.clients.select",
+            "web.clients.download",
+          ].includes(request.method)
+            ? 180000
+            : 30000,
         );
       }),
     ]);

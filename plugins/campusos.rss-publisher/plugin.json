@@ -2,7 +2,7 @@
   "api_version": "campusos.plugin/v5",
   "publisher": "campusos",
   "key": "rss-publisher",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "host_contracts": [
     "campusos.host/v1"
   ],
@@ -31,6 +31,14 @@
       },
       "purpose": "Import my explicitly selected feed item into the host article editor; publish only after my confirmation",
       "required": true
+    },
+    {
+      "capability": "web.local.read",
+      "scope": {
+        "kind": "self"
+      },
+      "purpose": "Read public HTTPS documents and images through my explicitly paired computer and its locally configured proxy; no filesystem, shell or server proxy control",
+      "required": false
     }
   ],
   "provides": [],
@@ -106,7 +114,7 @@
     {
       "audience": "user",
       "entrypoint": "dist/user/index.html",
-      "digest": "sha256:e16c14bb2bdd36efe4cc56c935319001851e41f2e1b7d1007f376c1aaa49add7",
+      "digest": "sha256:af2d08d48e9314124d911723110af99c5f8bf3b4f151f0d3b3de397558aa34db",
       "isolation": "opaque"
     }
   ]

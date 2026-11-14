@@ -565,7 +565,7 @@ CAMPUSOS_PLUGIN_UI_PARENTS="http://localhost:3000 http://localhost:3001 http://1
 
 ### 隔离插件页显示 localhost 拒绝连接
 
-本节更新时间：2026-11-15（Asia/Shanghai）。RSS 2.0.0 的 opaque 沙箱通过本站加载，不需要 3003 或通配域名；PDF 等仍使用独立子域的界面需要浏览器直接连接 3003 网关。另一台设备访问`http://192.168.1.20:3000`时，`<租约>.localhost`仍然指向那台设备自己。已加入正确Parents也不能解决这个地址问题。
+本节更新时间：2026-11-15（Asia/Shanghai）。RSS 2.1.0 的 opaque 沙箱通过本站加载，不需要 3003 或通配域名；PDF 等仍使用独立子域的界面需要浏览器直接连接 3003 网关。另一台设备访问`http://192.168.1.20:3000`时，`<租约>.localhost`仍然指向那台设备自己。已加入正确Parents也不能解决这个地址问题。
 
 在`deploy/docker/.env.dev.local`同时设置下列值，并将示例IP换成实际开发机地址。已有可信LAN许可保持；其余API和数据服务继续使用回环绑定：
 

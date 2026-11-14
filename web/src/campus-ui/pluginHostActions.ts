@@ -59,6 +59,94 @@ export async function handlePluginHostAction(
     if (response.code !== 0) throw new Error('宿主操作暂不可用。')
     return response.data
   }
+  const clientID = (value: unknown) => {
+    if (value === undefined || value === '') return ''
+    if (typeof value !== 'string' || !/^[a-f0-9]{32}$/.test(value)) throw new Error('本机助手编号无效。')
+    return value
+  }
+  const selection = async () => {
+    const state = await call('web.clients.status')
+    if (typeof state.scope !== 'string' || !/^sha256:[a-f0-9]{64}$/.test(state.scope))
+      throw new Error('读取位置不可用。')
+    const key = 'campusos.web-client.' + state.scope
+    const selected = clientID(sessionStorage.getItem(key) || '')
+    return { state, key, selected }
+  }
+  const ensureChoice = async (expected: string) => {
+    if ((await selection()).selected !== expected) throw new Error('读取位置已变化，请重新读取。')
+  }
+  if (request.method.startsWith('web.clients.')) {
+    if (request.method === 'web.clients.status') {
+      exactKeys(params, [])
+      const { state, selected } = await selection()
+      return {
+        clients: state.clients || [],
+        local_available: state.local_available === true,
+        selected_client_id: selected,
+      }
+    }
+    if (request.method === 'web.clients.pair') {
+      exactKeys(params, [])
+      await ElMessageBox.confirm(
+        '将公开网页或图片读取交给你主动配对的电脑？助手只处理只读任务，本机代理由你在助手中配置；地址和口令不会上传服务器。',
+        '连接本机抓取助手',
+        { confirmButtonText: '生成配对码', cancelButtonText: '取消' },
+      )
+      const result = await call('web.clients.pair')
+      return { pairing_code: result.pairing_code, expires_at: result.expires_at, server: window.location.origin }
+    }
+    if (request.method === 'web.clients.select') {
+      exactKeys(params, ['client_id'])
+      const id = clientID(params.client_id)
+      await ElMessageBox.confirm(
+        id
+          ? '后续读取将使用选中电脑的网络和本机代理。助手失联会报错，请保持窗口开启。'
+          : '后续读取将使用服务器网络及管理员统一配置的代理。',
+        '切换读取位置',
+        { confirmButtonText: '确认切换', cancelButtonText: '取消' },
+      )
+      const result = await call('web.clients.select', id ? { client_id: id } : {})
+      if (typeof result.scope !== 'string' || !/^sha256:[a-f0-9]{64}$/.test(result.scope))
+        throw new Error('读取位置不可用。')
+      sessionStorage.setItem('campusos.web-client.' + result.scope, id)
+      return { selected_client_id: id }
+    }
+    if (request.method === 'web.clients.disconnect') {
+      exactKeys(params, ['client_id'])
+      const id = clientID(params.client_id)
+      if (!id) throw new Error('请选择本机助手。')
+      await call('web.clients.disconnect', { client_id: id })
+      return { disconnected: true }
+    }
+    if (request.method === 'web.clients.download') {
+      exactKeys(params, ['platform'])
+      if (
+        typeof params.platform !== 'string' ||
+        !['windows-amd64', 'linux-amd64', 'linux-arm64', 'darwin-amd64', 'darwin-arm64'].includes(params.platform)
+      )
+        throw new Error('下载平台无效。')
+      const { state } = await selection()
+      if (!state.local_available) throw new Error('本机读取能力尚未批准。')
+      await ElMessageBox.confirm(
+        `下载 ${params.platform} 本机助手？程序需要你在自己的电脑上手动运行，插件不会自动执行或安装。`,
+        '下载本机助手',
+        { confirmButtonText: '确认下载', cancelButtonText: '取消' },
+      )
+      await current()
+      const blob = await pluginV5Api.companionTool(params.platform)
+      await current()
+      if (!(blob instanceof Blob) || blob.size < 1 || blob.size > 32 * 1024 * 1024) throw new Error('助手文件不可用。')
+      const url = URL.createObjectURL(blob),
+        link = document.createElement('a')
+      link.href = url
+      link.download =
+        'campusos-web-companion-' + params.platform + (params.platform.startsWith('windows') ? '.exe' : '')
+      link.click()
+      setTimeout(() => URL.revokeObjectURL(url), 10000)
+      return { downloaded: true }
+    }
+    throw new Error('本机助手操作无效。')
+  }
   if (request.method === 'config.update') {
     exactKeys(params, ['revision', 'values_json'])
     if (
@@ -88,13 +176,19 @@ export async function handlePluginHostAction(
     return { reload_required: true }
   }
   if (request.method === 'web.read') {
-    exactKeys(params, ['url', 'kind'])
+    exactKeys(params, ['url', 'kind', 'client_id'])
+    const id = clientID(params.client_id)
+    await ensureChoice(id)
     if (!['document', 'image'].includes(String(params.kind))) throw new Error('资源类型无效。')
-    const result = await call('web.read', { url: publicURL(params.url), kind: params.kind })
+    const result = await call('web.read', {
+      url: publicURL(params.url),
+      kind: params.kind,
+      ...(id ? { client_id: id } : {}),
+    })
     return { bytes: bytes(result.bytes), mime: result.mime }
   }
   if (request.method !== 'editor.article.import' || !openComposer) throw new Error('图文编辑器不可用。')
-  exactKeys(params, ['title', 'summary', 'content_html', 'source'])
+  exactKeys(params, ['title', 'summary', 'content_html', 'source', 'client_id'])
   if (
     typeof params.title !== 'string' ||
     !params.title.trim() ||
@@ -106,7 +200,9 @@ export async function handlePluginHostAction(
   )
     throw new Error('图文内容超出限制。')
   const source = publicURL(params.source)
-  const allowed = await call('editor.article.import')
+  const selectedClient = clientID(params.client_id)
+  await ensureChoice(selectedClient)
+  const allowed = await call('editor.article.import', selectedClient ? { client_id: selectedClient } : {})
   if (!allowed.authorized) throw new Error('图文导入未获授权。')
   await ElMessageBox.confirm(
     `将 ${surface.plugin} 提供的“${params.title}”导入图文编辑器？来源：${source}。图片会转存到你的空间；请核对内容与转载权限，再手动发布。`,
@@ -131,7 +227,12 @@ export async function handlePluginHostAction(
       const target = queue.shift()!
       try {
         if (Date.now() >= deadline) throw new Error('导入超时')
-        const result = await call('web.read', { url: publicURL(target), kind: 'image' })
+        await ensureChoice(selectedClient)
+        const result = await call('web.read', {
+          url: publicURL(target),
+          kind: 'image',
+          ...(selectedClient ? { client_id: selectedClient } : {}),
+        })
         const extension = (
           { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/gif': 'gif', 'image/webp': 'webp' } as Record<
             string,
@@ -183,6 +284,7 @@ export async function handlePluginHostAction(
     warnings: [...warnings],
     source,
   })
+  await ensureChoice(selectedClient)
   setTimeout(() => void openComposer(id).catch(() => {}), 100)
   return { opened: true, images_imported: imported.size, warnings: [...warnings] }
 }

@@ -60,7 +60,18 @@ export async function handleIsolatedPluginRequest(
     await current()
     return result
   }
-  if (['config.update', 'web.read', 'editor.article.import'].includes(request.method))
+  if (
+    [
+      'config.update',
+      'web.read',
+      'editor.article.import',
+      'web.clients.status',
+      'web.clients.pair',
+      'web.clients.select',
+      'web.clients.disconnect',
+      'web.clients.download',
+    ].includes(request.method)
+  )
     return handlePluginHostAction(surface, request, current, openComposer)
   if (!invocationID) throw new Error('请先在宿主中选择有权访问的资源。')
   if (request.method !== 'resource.describe' && request.method !== 'resource.readRange') {

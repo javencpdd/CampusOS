@@ -242,7 +242,7 @@ func moduleOwnerFor(handler, path string) string {
 		return "core.reliability"
 	case strings.HasPrefix(path, APIPrefix+"/platform/email-delivery"):
 		return "core.email-delivery"
-	case strings.HasPrefix(path, APIPrefix+"/plugin-v5"), strings.HasPrefix(path, APIPrefix+"/admin/plugin-v5"), strings.HasPrefix(path, APIPrefix+"/plugins"), strings.HasPrefix(path, APIPrefix+"/plugin-packages"), strings.HasPrefix(path, APIPrefix+"/plugin-market"), strings.HasPrefix(path, APIPrefix+"/plugin-capabilities"), strings.HasPrefix(path, APIPrefix+"/plugin-authorizations"), strings.HasPrefix(path, APIPrefix+"/extensions"), strings.HasPrefix(path, APIPrefix+"/ui/"):
+	case strings.HasPrefix(path, APIPrefix+"/web-companion"), strings.HasPrefix(path, APIPrefix+"/plugin-v5"), strings.HasPrefix(path, APIPrefix+"/admin/plugin-v5"), strings.HasPrefix(path, APIPrefix+"/plugins"), strings.HasPrefix(path, APIPrefix+"/plugin-packages"), strings.HasPrefix(path, APIPrefix+"/plugin-market"), strings.HasPrefix(path, APIPrefix+"/plugin-capabilities"), strings.HasPrefix(path, APIPrefix+"/plugin-authorizations"), strings.HasPrefix(path, APIPrefix+"/extensions"), strings.HasPrefix(path, APIPrefix+"/ui/"):
 		return "core.plugin-platform"
 	case strings.HasPrefix(path, APIPrefix+"/ai"):
 		return "feature.ai-gateway"
@@ -457,15 +457,17 @@ func OpenAPI(routes []RouteContract) []byte {
 			fmt.Fprintf(&out, "      x-campusos-module-owner: %s\n", route.ModuleOwner)
 			fmt.Fprintf(&out, "      x-campusos-scope: %s\n", route.Scope)
 			fmt.Fprintf(&out, "      x-campusos-operation: %s\n", route.OperationCode)
-			if strings.Contains(route.Auth, "opaque-ui-lease") || strings.Contains(route.Auth, "admin-account") || strings.Contains(route.Auth, "current-admin-session") || strings.HasPrefix(route.OperationCode, "http.knowledge.private.") || route.Audience == "integration" || strings.Contains(route.OperationCode, "http.identity.admin_") || route.Auth == "none+current-origin-policy" {
+			if strings.Contains(route.Auth, "client-token") || strings.Contains(route.Auth, "client-pair") || strings.Contains(route.Auth, "opaque-ui-lease") || strings.Contains(route.Auth, "admin-account") || strings.Contains(route.Auth, "current-admin-session") || strings.HasPrefix(route.OperationCode, "http.knowledge.private.") || route.Audience == "integration" || strings.Contains(route.OperationCode, "http.identity.admin_") || route.Auth == "none+current-origin-policy" {
 				fmt.Fprintf(&out, "      x-campusos-auth: %s\n", route.Auth)
 			}
 			if route.PermissionCode != "" {
 				fmt.Fprintf(&out, "      x-campusos-permission: %s\n", route.PermissionCode)
 			}
-			authenticated := route.Auth != "none" && route.Auth != "none+current-origin-policy" && !strings.HasPrefix(route.Auth, "opaque-ui-lease")
+			authenticated := route.Auth != "none" && route.Auth != "none+current-origin-policy" && !strings.HasPrefix(route.Auth, "opaque-ui-lease") && !strings.HasPrefix(route.Auth, "one-use-client-pair")
 			if authenticated {
-				if route.Auth == "admin-refresh-cookie+csrf" {
+				if strings.HasPrefix(route.Auth, "opaque-client-token") {
+					out.WriteString("      security:\n        - companionToken: []\n")
+				} else if route.Auth == "admin-refresh-cookie+csrf" {
 					out.WriteString("      security:\n        - adminRefreshCookie: []\n")
 				} else if route.Audience == "integration" {
 					out.WriteString("      security:\n        - integrationCredential: []\n")
@@ -635,6 +637,21 @@ func FindRepositoryRoot(start string) (string, error) {
 // Explicit governance metadata follows operation extraction and scope parsing;
 // execution grants do not imply the generic authenticated owner rule.
 func applyResourceGovernanceContract(route *RouteContract) {
+	if strings.HasPrefix(route.OperationCode, "http.web_companion.agent.") {
+		route.Auth = "opaque-client-token+current-bound-user-session+package-grant+user-consent"
+		if route.OperationCode == "http.web_companion.agent.connect" {
+			route.Auth = "one-use-client-pair+current-bound-user-session+package-grant+user-consent"
+		}
+		route.Scope = "session-plugin-client-public-read"
+		route.Ownership = "pair-derived-current-user"
+		route.Audit = "request-log-no-content"
+	}
+	if route.OperationCode == "http.web_companion.user.download" {
+		route.Auth = "jwt+current-user-session"
+		route.Scope = "fixed-platform-client-artifact"
+		route.Ownership = "current-user-derived"
+	}
+
 	if route.OperationCode == "http.plugin.v5.user.ui_action" {
 		route.Auth = "jwt+current-user-session+current-ui-proof+package-grant+user-consent+browser-csrf"
 		route.Scope = "published-ui-capability-self"

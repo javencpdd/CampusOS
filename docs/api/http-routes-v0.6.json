@@ -478,6 +478,57 @@
       "stability": "experimental"
     },
     {
+      "method": "POST",
+      "path": "/api/v1/web-companion/connect",
+      "handler": "pluginV5Handler.CompanionConnect",
+      "module_owner": "core.plugin-platform",
+      "audience": "public",
+      "auth": "one-use-client-pair+current-bound-user-session+package-grant+user-consent",
+      "operation_code": "http.web_companion.agent.connect",
+      "legacy_aliases": [
+        "http.post.api.v1.web_companion.connect",
+        "httpapi.post.api.v1.web_companion.connect"
+      ],
+      "ownership": "pair-derived-current-user",
+      "scope": "session-plugin-client-public-read",
+      "audit": "request-log-no-content",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/web-companion/poll",
+      "handler": "pluginV5Handler.CompanionPoll",
+      "module_owner": "core.plugin-platform",
+      "audience": "public",
+      "auth": "opaque-client-token+current-bound-user-session+package-grant+user-consent",
+      "operation_code": "http.web_companion.agent.poll",
+      "legacy_aliases": [
+        "http.post.api.v1.web_companion.poll",
+        "httpapi.post.api.v1.web_companion.poll"
+      ],
+      "ownership": "pair-derived-current-user",
+      "scope": "session-plugin-client-public-read",
+      "audit": "request-log-no-content",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/web-companion/result",
+      "handler": "pluginV5Handler.CompanionResult",
+      "module_owner": "core.plugin-platform",
+      "audience": "public",
+      "auth": "opaque-client-token+current-bound-user-session+package-grant+user-consent",
+      "operation_code": "http.web_companion.agent.result",
+      "legacy_aliases": [
+        "http.post.api.v1.web_companion.result",
+        "httpapi.post.api.v1.web_companion.result"
+      ],
+      "ownership": "pair-derived-current-user",
+      "scope": "session-plugin-client-public-read",
+      "audit": "request-log-no-content",
+      "stability": "experimental"
+    },
+    {
       "method": "GET",
       "path": "/api/v1/plugin-v5/ui-assets/:lease/*asset",
       "handler": "pluginV5Handler.OpaqueUIAsset",
@@ -1511,6 +1562,23 @@
       ],
       "ownership": "handler-enforced",
       "scope": "self-or-resource-owner",
+      "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/web-companion/tools/:platform",
+      "handler": "pluginV5Handler.CompanionDownload",
+      "module_owner": "core.plugin-platform",
+      "audience": "authenticated",
+      "auth": "jwt+current-user-session",
+      "operation_code": "http.web_companion.user.download",
+      "legacy_aliases": [
+        "http.get.api.v1.web_companion.tools.platform",
+        "httpapi.get.api.v1.web_companion.tools.platform"
+      ],
+      "ownership": "current-user-derived",
+      "scope": "fixed-platform-client-artifact",
       "audit": "request-log-read",
       "stability": "experimental"
     },

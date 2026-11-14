@@ -4,9 +4,11 @@ import (
 	"context"
 	"crypto/subtle"
 	"errors"
+	"github.com/campusos/CampusOS/internal/platform/webcompanion"
 	"io"
 	"net/http"
 	"strconv"
+	"sync"
 
 	identity "github.com/campusos/CampusOS/internal/modules/core/identity/port"
 	"github.com/campusos/CampusOS/internal/platform/security"
@@ -17,6 +19,10 @@ import (
 )
 
 type V5HTTPHandler struct {
+	clientTarget        func(context.Context, string) error
+	companionOnce       sync.Once
+	companionHub        *webcompanion.Hub
+	CompanionToolsDir   string
 	WebProxies          *security.ProxyRegistry
 	WebProxyProfile     string
 	ValidatePublicImage func([]byte) ([]byte, string, error)

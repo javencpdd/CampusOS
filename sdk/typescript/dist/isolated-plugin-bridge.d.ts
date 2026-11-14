@@ -13,7 +13,7 @@ export interface PluginFrameIdentity {
 export interface PluginBridgeRequest {
     version: typeof PLUGIN_BRIDGE_VERSION;
     request_id: string;
-    method: "config.read" | "config.update" | "resource.describe" | "resource.readRange" | "backend.invoke" | "ui.requestSurface" | "records.read" | "records.write" | "web.read" | "editor.article.import";
+    method: "config.read" | "config.update" | "resource.describe" | "resource.readRange" | "backend.invoke" | "ui.requestSurface" | "records.read" | "records.write" | "web.read" | "editor.article.import" | "web.clients.status" | "web.clients.pair" | "web.clients.select" | "web.clients.disconnect" | "web.clients.download";
     params: Record<string, unknown>;
 }
 export interface PluginBridgeResponse {

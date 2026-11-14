@@ -60,7 +60,14 @@ export class Bridge {
           this.pending.delete(request_id);
           reject(new Error("操作超时，请核对结果后重试。"));
         },
-        method === "editor.article.import" ? 185000 : 35000,
+        [
+          "editor.article.import",
+          "web.clients.pair",
+          "web.clients.select",
+          "web.clients.download",
+        ].includes(method)
+          ? 185000
+          : 35000,
       );
       this.pending.set(request_id, { resolve, reject, timer });
       this.port.postMessage({ version, request_id, method, params });

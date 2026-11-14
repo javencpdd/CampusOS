@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict'
 import { readFile, writeFile, mkdtemp, rm } from 'node:fs/promises'
 import { resolve } from 'node:path'
+import { spawn } from 'node:child_process'
+import { createHash } from 'node:crypto'
+import { once } from 'node:events'
 import { tmpdir } from 'node:os'
 import { chromium } from '../node_modules/playwright-core/index.mjs'
 import { createServer } from '../node_modules/vite/dist/node/index.js'
@@ -13,6 +16,7 @@ let browser,
   server,
   page,
   cache,
+  helper,
   phase = 'setup'
 try {
   cache = await mkdtemp(resolve(tmpdir(), 'campusos-rss-web-'))
@@ -68,10 +72,10 @@ try {
     async function command(kind, extra = {}) {
       const response = await context.request.post(family + '/commands', {
         headers: adminHeaders,
-        data: { kind, version: '2.0.0', idempotency_key: crypto.randomUUID(), ...extra },
+        data: { kind, version: '2.1.0', idempotency_key: crypto.randomUUID(), ...extra },
       })
       assert.equal(response.status(), 200, `global ${kind}`)
-      const detail = await context.request.get(family + '/2.0.0', { headers: adminHeaders })
+      const detail = await context.request.get(family + '/2.1.0', { headers: adminHeaders })
       assert.equal(detail.status(), 200)
       return (await detail.json()).data
     }
@@ -79,7 +83,9 @@ try {
     entry = await command('grant', {
       approved: true,
       expected_revision: entry.grant?.revision || '0',
-      consumes: entry.release.manifest.consumes,
+      consumes: config.noLocalCapability
+        ? entry.release.manifest.consumes.filter((item) => item.capability !== 'web.local.read')
+        : entry.release.manifest.consumes,
     })
     await command('enable', { expected_generation: entry.installation.generation })
   }
@@ -95,7 +101,7 @@ try {
     await page.goto(base + '/plugins')
     await page
       .getByRole('navigation', { name: '可用插件' })
-      .locator(`[data-coordinate="${publisher}/${key}@2.0.0"]`)
+      .locator(`[data-coordinate="${publisher}/${key}@2.1.0"]`)
       .click()
     await page.getByRole('button', { name: '安装到我的账号', exact: true }).click()
     await page.getByLabel('我已了解以上用途，同意此版本在宿主权限内处理我的数据').check()
@@ -147,15 +153,60 @@ try {
   assert.equal(await frame.getByRole('combobox', { name: '抓取代理', exact: true }).count(), 0)
   assert.equal(await frame.getByRole('button', { name: '保存读取设置', exact: true }).count(), 0)
   report.serverProxyControlsAbsentFromUserUI = true
+  if (config.noLocalCapability)
+    assert.equal(await frame.getByRole('button', { name: '连接本机助手', exact: true }).isDisabled(), true)
+  let selectedClient = ''
+  if (config.helper) {
+    phase = 'generic native companion pairing, user-only proxy and explicit selection'
+    await frame.getByRole('button', { name: '连接本机助手', exact: true }).click()
+    await page.getByRole('button', { name: '生成配对码', exact: true }).click()
+    await frame.getByLabel('本机助手配对码', { exact: true }).waitFor({ state: 'visible' })
+    const code = await frame.getByLabel('本机助手配对码', { exact: true }).inputValue()
+    assert.match(code, /^[a-f0-9]{32}$/)
+    const downloadPromise = page.waitForEvent('download')
+    await frame.getByRole('button', { name: '下载 Windows x64 助手', exact: true }).click()
+    await page.getByRole('button', { name: '确认下载', exact: true }).click()
+    const download = await downloadPromise
+    const bytes = await readFile(await download.path())
+    assert.equal(
+      createHash('sha256').update(bytes).digest('hex'),
+      createHash('sha256')
+        .update(await readFile(config.windowsArtifact))
+        .digest('hex'),
+    )
+    report.WindowsDownloadMatchesOperatorBuild = true
+    helper = spawn(config.helper, ['--server', base, '--name', 'Owned PC', '--proxy', config.clientProxy], {
+      stdio: ['pipe', 'pipe', 'pipe'],
+    })
+    helper.stdout.on('data', () => {})
+    helper.stderr.on('data', () => {})
+    helper.stdin.end(code + '\n')
+    const option = frame
+      .getByRole('combobox', { name: '读取位置', exact: true })
+      .getByRole('option', { name: /Owned PC/ })
+    await option.waitFor({ state: 'attached', timeout: 20000 })
+    selectedClient = await option.getAttribute('value')
+    await frame.getByRole('combobox', { name: '读取位置', exact: true }).selectOption(selectedClient)
+    await page.getByRole('button', { name: '确认切换', exact: true }).click()
+    await frame.locator('#reader-location').filter({ hasText: 'Owned PC' }).waitFor()
+    report.nativeCompanionWithClientOnlyProxy = true
+  }
   phase = 'plugin-side RSS parsing and brokered public HTTPS'
+  const beforeConfig = await page.locator('iframe').getAttribute('src')
   await frame.getByLabel('公开订阅地址', { exact: true }).fill('https://www.nasa.gov/news-release/feed/')
   await frame.getByRole('button', { name: '添加订阅', exact: true }).click()
   await page.getByRole('button', { name: '确认保存', exact: true }).click()
+  await page.waitForFunction((previous) => document.querySelector('iframe')?.src !== previous, beforeConfig)
   frame = page.frameLocator('iframe')
+  await frame.getByText('订阅列表已就绪。添加地址或选择订阅后读取内容。', { exact: true }).waitFor()
   await frame
     .getByRole('combobox', { name: '选择订阅', exact: true })
     .getByRole('option', { name: 'https://www.nasa.gov/news-release/feed/', exact: true })
     .waitFor({ state: 'attached', timeout: 20000 })
+  if (selectedClient) {
+    assert.equal(await frame.getByRole('combobox', { name: '读取位置', exact: true }).inputValue(), selectedClient)
+    report.connectionAndSelectionSurviveConfigReload = true
+  }
   await frame.getByRole('button', { name: '读取最新内容', exact: true }).click()
   await frame.locator('.entry').first().waitFor({ timeout: 30000 })
   report.realPublicFeedParsedByPluginJS = true
@@ -207,21 +258,40 @@ try {
     ),
   )
   report.genericImportOwnedImagesManualPublish = true
+  if (config.helper) {
+    phase = 'rotated login session revokes native credentials without a server fallback'
+    frame = await openPlugin('example.news-reader')
+    assert.equal(await frame.getByRole('combobox', { name: '读取位置', exact: true }).inputValue(), selectedClient)
+    await frame
+      .getByRole('combobox', { name: '读取位置', exact: true })
+      .getByRole('option', { name: /所选助手不可用/ })
+      .waitFor({ state: 'attached' })
+    await frame.getByRole('button', { name: '读取最新内容', exact: true }).click()
+    await frame.locator('#status.error').waitFor({ timeout: 30000 })
+    assert.equal(await frame.locator('.entry').count(), 0)
+    assert.equal(await frame.getByRole('combobox', { name: '读取位置', exact: true }).inputValue(), selectedClient)
+    if (helper.exitCode === null)
+      await Promise.race([
+        once(helper, 'exit'),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('native token was not revoked')), 15000)),
+      ])
+    report.sessionRotationRevokesNativeAndNeverUsesServer = true
+  }
   phase = 'owner isolation and uninstall without changes to the host'
   const userToken = await page.evaluate(async () => (await import('/src/modules/identity/session.ts')).getAccessToken())
   const csrf = (await context.cookies()).find((cookie) => cookie.name === 'campusos_csrf').value
   const userHeaders = { Authorization: `Bearer ${userToken}`, 'X-CSRF-Token': csrf }
   const family = api + '/plugin-v5/example/news-reader'
-  const detail = await context.request.get(family + '/2.0.0', { headers: userHeaders })
+  const detail = await context.request.get(family + '/2.1.0', { headers: userHeaders })
   assert.equal(detail.status(), 200)
-  const proof = await context.request.get(family + '/2.0.0/ui', { headers: userHeaders })
+  const proof = await context.request.get(family + '/2.1.0/ui', { headers: userHeaders })
   const aliceProof = (await proof.json()).data.proof
   for (const extra of [
     { profile: 'owned-http' },
     { proxy: 'http://127.0.0.1:7890' },
     { media_profile: 'owned-socks5' },
   ]) {
-    const refused = await context.request.post(family + '/2.0.0/ui-actions', {
+    const refused = await context.request.post(family + '/2.1.0/ui-actions', {
       headers: userHeaders,
       data: {
         proof: aliceProof,
@@ -240,7 +310,7 @@ try {
   })
   const bobToken = (await bobLogin.json()).data.access_token
   const bobCsrf = (await bob.cookies()).find((cookie) => cookie.name === 'campusos_csrf').value
-  const denied = await bob.request.post(family + '/2.0.0/ui-actions', {
+  const denied = await bob.request.post(family + '/2.1.0/ui-actions', {
     headers: { Authorization: `Bearer ${bobToken}`, 'X-CSRF-Token': bobCsrf },
     data: { proof: aliceProof, action: 'web.read', url: 'https://www.nasa.gov/news-release/feed/', kind: 'document' },
   })
@@ -251,7 +321,7 @@ try {
   const removed = await context.request.post(family + '/commands', {
     headers: userHeaders,
     data: {
-      version: '2.0.0',
+      version: '2.1.0',
       kind: 'uninstall',
       expected_generation: own.generation,
       idempotency_key: crypto.randomUUID(),
@@ -273,6 +343,7 @@ try {
 } finally {
   await writeFile(resolve(config.output, 'browser-report.json'), JSON.stringify(report, null, 2) + '\n')
   console.log(JSON.stringify(report))
+  if (helper && helper.exitCode === null) helper.kill('SIGTERM')
   await browser?.close()
   await server?.close()
   if (cache) await rm(cache, { recursive: true, force: true })

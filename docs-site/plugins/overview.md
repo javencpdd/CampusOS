@@ -35,7 +35,7 @@
 
 PDF Viewer是`runtime: none`的UI-only示例：文章附件、个人资源和个人文档的PDF通过宿主选择的有限资源句柄预览。PC/移动端提供弹窗、侧边、全屏、新标签页；没有插件仍可下载。当前作者源码为`3.0.0-dev.4`（.168），已有握手/取消、类型/构建和CLI包校验证据；未签名导入或自动升级既有实例。不可变安装版本以实例实际目录为准，不能由源码版本推断。Echo等独立SDK示例的打包和实际运行各有合同，不因包检查通过就推断任意Wasm产物可执行。
 
-UI 使用声明式 opaque 沙箱或当前证明的独立子域，由有限 MessagePort 访问获准资源。[RSS 2.0.0 图文订阅插件](/plugins/rss-publisher)以普通网页加载，JS 解析在插件包内，通过通用 Broker 读取公开内容和转存图片，再由用户在原编辑器核对发布。此段更新时间：2026-11-15（Asia/Shanghai）。授权、原业务 ACL 和资源修订始终由宿主复核。Wasm/Container 的 CPU/内存/跨进程隔离与恢复验收不由 UI-only 运行替代。
+UI 使用声明式 opaque 沙箱或当前证明的独立子域，由有限 MessagePort 访问获准资源。[RSS 2.1.0 图文订阅插件](/plugins/rss-publisher)以普通网页加载，JS 解析在插件包内，通过通用 Broker 读取公开内容和转存图片，再由用户在原编辑器核对发布。此段更新时间：2026-11-15（Asia/Shanghai）。授权、原业务 ACL 和资源修订始终由宿主复核。Wasm/Container 的 CPU/内存/跨进程隔离与恢复验收不由 UI-only 运行替代。
 
 继续阅读：[Manifest与配置](/plugins/manifest)、[隔离UI与Bridge](/plugins/frontend-runtime)、[授权与资源访问](/plugins/authorization-v3)、[v4 PDF历史教程](/plugins/pdf-viewer-tutorial)，以及仓库`docs/help/插件v5包与签名操作说明.md`。旧协议说明保留其明确的历史范围。
 

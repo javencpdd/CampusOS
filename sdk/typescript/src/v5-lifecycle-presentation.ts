@@ -21,7 +21,8 @@ export function capabilityTitle(code: string): string {
       {
         "ui.surface.open": "打开插件界面",
         "ui.resource.selected.read": "读取用户明确选择的 PDF",
-        "rss.feed.read": "读取本人订阅及所选图片",
+        "web.public.read": "通过服务器读取公开网页和图片",
+        "web.local.read": "通过本人配对的客户端读取公开网页和图片",
         "community.article.compose": "将所选图文导入编辑器，由本人确认发布",
         "knowledge.public.search": "检索限定的公开知识集合",
         "knowledge.public.source.read": "读取限定集合中的公开资料",
