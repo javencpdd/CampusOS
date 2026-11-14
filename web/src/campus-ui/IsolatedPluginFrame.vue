@@ -1,7 +1,7 @@
 <template>
   <section class="isolated-plugin-frame" :aria-busy="state === 'connecting'">
     <iframe
-      v-if="state !== 'blocked'"
+      v-if="state === 'connecting' || state === 'ready'"
       ref="frame"
       :key="frameKey"
       :src="src"
@@ -9,8 +9,14 @@
       sandbox="allow-scripts allow-same-origin"
       referrerpolicy="no-referrer"
       @load="onLoad"
+      @error="onError"
     />
     <el-alert v-if="message" :title="message" :type="state === 'ready' ? 'success' : 'warning'" :closable="false" />
+    <div v-if="state === 'unavailable'" class="frame-recovery" role="status">
+      <p>重新加载后可继续操作。若仍失败，请检查这台电脑的网络或代理能否访问插件界面地址：</p>
+      <code>{{ identity.origin }}</code>
+      <el-button type="primary" @click="retry">重新加载插件界面</el-button>
+    </div>
   </section>
 </template>
 
@@ -38,12 +44,15 @@ const props = defineProps<{
 
 const frame = ref<HTMLIFrameElement>()
 const loaded = ref(false)
-const state = ref<'connecting' | 'ready' | 'blocked'>(
+const attempt = ref(0)
+const failure = ref('')
+const state = ref<'connecting' | 'ready' | 'blocked' | 'unavailable'>(
   validFrameIdentity(props.identity, window.location.origin) && sourceMatchesIdentity() ? 'connecting' : 'blocked',
 )
-const frameKey = computed(() => JSON.stringify([props.identity, props.src]))
+const frameKey = computed(() => JSON.stringify([props.identity, props.src, attempt.value]))
 const message = computed(() => {
   if (state.value === 'blocked') return '插件界面未通过隔离连接校验，已阻止加载。'
+  if (state.value === 'unavailable') return failure.value
   if (state.value === 'ready') return ''
   return loaded.value ? '正在建立受限插件连接…' : '正在加载隔离插件界面…'
 })
@@ -67,6 +76,26 @@ function closeSession() {
 function reject() {
   closeSession()
   state.value = 'blocked'
+}
+
+function unavailable(message: string) {
+  closeSession()
+  failure.value = message
+  state.value = 'unavailable'
+}
+
+function startLoadDeadline() {
+  if (state.value !== 'connecting') return
+  const fingerprint = frameKey.value
+  timeout = setTimeout(() => {
+    if (frameKey.value === fingerprint && state.value === 'connecting')
+      unavailable('插件界面加载超时，请重新加载后继续。')
+  }, 10_000)
+}
+
+function retry() {
+  if (getAccessToken() !== identityToken) return reject()
+  attempt.value++
 }
 
 function newChallenge(): string {
@@ -98,7 +127,7 @@ function onWindowMessage(event: MessageEvent<unknown>) {
   ) {
     return
   }
-  if (session || state.value === 'blocked') return
+  if (session || state.value !== 'connecting') return
   const channel = new MessageChannel()
   let challenge: string
   try {
@@ -142,9 +171,6 @@ function onWindowMessage(event: MessageEvent<unknown>) {
     props.identity.origin,
     [channel.port2],
   )
-  timeout = setTimeout(() => {
-    if (!session?.active) reject()
-  }, 10_000)
 }
 
 async function handlePortMessage(
@@ -168,24 +194,33 @@ async function handlePortMessage(
   }
   await dispatchPluginBridgeRequest(connected, event.data, current, handler, seen, budget)
 }
-function onLoad() {
+function onLoad(event: Event) {
+  if (event.target !== frame.value) return
   if (loaded.value) reject()
   loaded.value = true
+}
+function onError(event: Event) {
+  if (event.target !== frame.value) return
+  unavailable('未能加载插件界面，请重新加载后继续。')
 }
 watch(
   frameKey,
   () => {
     closeSession()
     loaded.value = false
+    failure.value = ''
     state.value =
       validFrameIdentity(props.identity, window.location.origin) && sourceMatchesIdentity() ? 'connecting' : 'blocked'
+    if (getAccessToken() !== identityToken) reject()
+    else startLoadDeadline()
   },
   { flush: 'sync' },
 )
 
 onMounted(() => {
   if (!validFrameIdentity(props.identity, window.location.origin) || !sourceMatchesIdentity()) reject()
-  else window.addEventListener('message', onWindowMessage)
+  window.addEventListener('message', onWindowMessage)
+  startLoadDeadline()
   identityTimer = setInterval(() => {
     if (getAccessToken() !== identityToken || (session && state.value === 'ready' && !session.active)) reject()
   }, 100)
@@ -202,6 +237,13 @@ onBeforeUnmount(() => {
   display: grid;
   gap: 10px;
   min-height: 320px;
+}
+
+.frame-recovery {
+  display: grid;
+  gap: 12px;
+  justify-items: start;
+  overflow-wrap: anywhere;
 }
 
 iframe {
