@@ -49,11 +49,14 @@
 
 <script setup lang="ts">
 import { reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/modules/identity/store'
+import { useUIRuntimeStore } from '@/modules/plugin-runtime/store'
+import { loginRedirect } from '../loginRedirect'
 import { ElMessage } from 'element-plus'
 
 const router = useRouter()
+const route = useRoute()
 const userStore = useUserStore()
 const loading = ref(false)
 const form = reactive({ email: '', password: '' })
@@ -75,7 +78,8 @@ const handleLogin = async () => {
     }
     if (!userStore.isLoggedIn) throw new Error(response?.msg || '登录结果不可用')
     ElMessage.success('登录成功')
-    router.push('/')
+    await useUIRuntimeStore().sync()
+    await router.replace(loginRedirect(route.query.redirect))
   } catch (error: any) {
     if (error?.error?.code === 'identity.mfa.enrollment_required') {
       ElMessage.warning('管理端已要求多因素认证。请先在普通用户端的“账号安全”中启用认证器。')
@@ -94,7 +98,8 @@ const completeMFA = async () => {
     const response: any = await userStore.completeMFA(mfaTicket.value, mfaForm.code)
     if (!userStore.isLoggedIn) throw new Error(response?.msg || '多因素验证结果不可用')
     ElMessage.success('登录成功')
-    router.push('/')
+    await useUIRuntimeStore().sync()
+    await router.replace(loginRedirect(route.query.redirect))
   } catch (error: any) {
     ElMessage.error(messageOf(error, '动态验证码无效或已过期'))
   } finally {

@@ -37,8 +37,8 @@ export const authApi = {
   }) => api.post('/auth/register', data),
   login: (data: { email: string; password: string }) => api.post('/auth/login', data),
   completeMFALogin: (data: { mfa_ticket: string; code: string }) => api.post('/auth/mfa/login/complete', data),
-  refresh: () => api.post('/auth/refresh'),
-  logout: () => api.post('/auth/logout'),
+  refresh: () => api.post('/auth/refresh', undefined, { sessionRecovery: false }),
+  logout: () => api.post('/auth/logout', undefined, { sessionRecovery: false }),
   logoutAll: () => api.post('/auth/logout-all'),
   sessions: () => api.get('/auth/sessions'),
   revokeSession: (id: string) => api.delete(`/auth/sessions/${id}`),
@@ -60,7 +60,7 @@ export const authApi = {
   disableMFA: (data: { password: string; code?: string; recovery_code?: string }) =>
     api.delete('/auth/mfa/totp', { data }),
   stepUpMFA: (data: { code: string }) => api.post('/auth/mfa/step-up', data),
-  me: () => api.get('/auth/me'),
+  me: (token?: string) => api.get('/auth/me', { sessionRecovery: false, sessionProbeToken: token }),
 }
 
 export const userApi = {

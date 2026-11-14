@@ -62,8 +62,13 @@ export class RuntimeRegistry {
     this.snapshot = next
     this.manifestFingerprint = fingerprint
     const current = this.router.currentRoute.value
-    const browserPath = `${window.location.pathname}${window.location.search}`
-    if (current.matched.length === 0 && browserPath === current.fullPath) void this.router.replace(current.fullPath)
+    const browserPath = `${window.location.pathname}${window.location.search}${window.location.hash}`
+    if (
+      browserPath === current.fullPath &&
+      (current.matched.length === 0 ||
+        (current.meta?.pluginUnavailable && this.router.resolve?.(current.fullPath).name !== current.name))
+    )
+      void this.router.replace(current.fullPath)
     return next
   }
 

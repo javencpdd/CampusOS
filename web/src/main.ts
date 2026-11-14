@@ -6,6 +6,7 @@ import App from './App.vue'
 import router from './router'
 import { useUserStore } from './modules/identity/store'
 import { receivePreviewSessionHandoff } from './modules/identity/previewSessionHandoff'
+import { useUIRuntimeStore } from './modules/plugin-runtime/store'
 
 const app = createApp(App)
 const pinia = createPinia()
@@ -15,6 +16,9 @@ const userStore = useUserStore(pinia)
 void (async () => {
   const token = await receivePreviewSessionHandoff()
   if (token) userStore.updateAccessToken(token)
-  app.use(router)
   await userStore.restore()
-})().finally(() => app.mount('#app'))
+  await useUIRuntimeStore(pinia).sync()
+})().finally(() => {
+  app.use(router)
+  app.mount('#app')
+})

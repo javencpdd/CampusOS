@@ -1,6 +1,6 @@
 import { getAccessToken } from '@/modules/identity/session'
 import { installPluginFramePolicy } from '../../../../sdk/typescript/src/plugin-frame-policy'
-import { computed, ref } from 'vue'
+import { computed, onScopeDispose, ref } from 'vue'
 import { defineStore } from 'pinia'
 import router from '@/router'
 import { RuntimeRegistry } from '@/campus-ui/runtimeRegistry'
@@ -132,6 +132,14 @@ export const useUIRuntimeStore = defineStore('ui-runtime', () => {
   }
   const surface = (id: string) => surfaces.value.get(id)
   const action = (id: string) => actions.value.get(id)
+
+  const identityChanged = () => {
+    identity = getAccessToken()
+    clearPrivate()
+    void sync()
+  }
+  window.addEventListener('campusos:identity-session-changed', identityChanged)
+  onScopeDispose(() => window.removeEventListener('campusos:identity-session-changed', identityChanged))
 
   return {
     revision,
