@@ -4,6 +4,7 @@ import (
 	"context"
 	"reflect"
 	"sort"
+	"sync"
 	"time"
 
 	identityport "github.com/campusos/CampusOS/internal/modules/core/identity/port"
@@ -12,10 +13,12 @@ import (
 )
 
 type BoardGovernanceAuthorityService struct {
-	delegations   repository.DelegationRepository
-	admins        repository.AdminDomainRepository
-	adminSessions identityport.AdminSessionAuthorityReader
-	now           func() time.Time
+	delegations          repository.DelegationRepository
+	admins               repository.AdminDomainRepository
+	adminSessions        identityport.AdminSessionAuthorityReader
+	now                  func() time.Time
+	confirmationMu       sync.Mutex
+	confirmationAttempts map[string]adminConfirmationAttempts
 }
 
 func NewBoardGovernanceAuthorityService(delegations repository.DelegationRepository, admins repository.AdminDomainRepository, sessions identityport.AdminSessionAuthorityReader) *BoardGovernanceAuthorityService {

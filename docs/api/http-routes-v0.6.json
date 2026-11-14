@@ -4015,6 +4015,23 @@
     },
     {
       "method": "POST",
+      "path": "/api/v1/admin/identity/password",
+      "handler": "d.Identity.AdminDomain.ChangePassword",
+      "module_owner": "core.identity",
+      "audience": "authenticated",
+      "auth": "jwt+current-admin-session+browser-csrf",
+      "operation_code": "http.identity.admin_self.password.change",
+      "legacy_aliases": [
+        "http.post.api.v1.admin.identity.password",
+        "httpapi.post.api.v1.admin.identity.password"
+      ],
+      "ownership": "resource-policy",
+      "scope": "current-admin-self",
+      "audit": "required-command+outbox",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
       "path": "/api/v1/admin/identity/mfa/enroll",
       "handler": "d.Identity.AdminDomain.EnrollTOTP",
       "module_owner": "core.identity",
@@ -6839,6 +6856,63 @@
       "ownership": "none",
       "scope": "global",
       "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/platform/runtime-config",
+      "handler": "runtimeConfigHandler.Read",
+      "module_owner": "core.platform-api",
+      "audience": "admin",
+      "auth": "jwt+current-admin-session+permission",
+      "permission": "runtime_config:read",
+      "permission_code": "platform.runtime_config.read",
+      "operation_code": "http.platform.runtime_config.read",
+      "legacy_aliases": [
+        "http.get.api.v1.platform.runtime_config",
+        "httpapi.get.api.v1.platform.runtime_config"
+      ],
+      "ownership": "deployment-runtime-file",
+      "scope": "platform.runtime_config/current",
+      "audit": "none",
+      "stability": "experimental"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/platform/runtime-config",
+      "handler": "runtimeConfigHandler.Update",
+      "module_owner": "core.platform-api",
+      "audience": "admin",
+      "auth": "jwt+current-admin-session+permission+recent-mfa-or-current-password+browser-csrf",
+      "permission": "runtime_config:manage",
+      "permission_code": "platform.runtime_config.manage",
+      "operation_code": "http.platform.runtime_config.update",
+      "legacy_aliases": [
+        "http.put.api.v1.platform.runtime_config",
+        "httpapi.put.api.v1.platform.runtime_config"
+      ],
+      "ownership": "deployment-runtime-file",
+      "scope": "platform.runtime_config/current",
+      "audit": "required-intent-audit+outbox",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/platform/runtime-config/document",
+      "handler": "runtimeConfigHandler.Document",
+      "module_owner": "core.platform-api",
+      "audience": "admin",
+      "auth": "jwt+current-admin-session+permission+recent-mfa-or-current-password+browser-csrf",
+      "permission": "runtime_config:manage",
+      "permission_code": "platform.runtime_config.manage",
+      "operation_code": "http.platform.runtime_config.document",
+      "legacy_aliases": [
+        "http.post.api.v1.platform.runtime_config.document",
+        "httpapi.post.api.v1.platform.runtime_config.document"
+      ],
+      "ownership": "deployment-runtime-file",
+      "scope": "platform.runtime_config/current",
+      "audit": "required-intent-audit+outbox",
       "stability": "experimental"
     },
     {

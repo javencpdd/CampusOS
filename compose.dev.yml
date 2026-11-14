@@ -72,6 +72,7 @@ services:
       CAMPUSOS_DEV_GID: ${CAMPUSOS_DEV_GID:-1000}
       CAMPUSOS_DEV_POLL_INTERVAL: ${CAMPUSOS_DEV_POLL_INTERVAL:-1}
       CAMPUSOS_LOG_DIR: /workspace/.campusos/logs
+      CAMPUSOS_MANAGED_ENV_FILE: ${CAMPUSOS_DEV_MANAGED_ENV_FILE:-}
       GOPROXY: ${DOCKER_BUILD_GOPROXY:-https://goproxy.cn|https://proxy.golang.org|direct}
       GOSUMDB: ${DOCKER_BUILD_GOSUMDB:-sum.golang.google.cn}
       GOFLAGS: -buildvcs=false

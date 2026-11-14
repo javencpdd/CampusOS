@@ -249,6 +249,14 @@ func (g *ownedGroup) handle(method, path string, handlers ...gin.HandlerFunc) {
 		descriptor.Auth = "opaque-ui-lease+current-user-or-admin-session"
 		descriptor.Audit = "request-log-no-content"
 	}
+	if strings.HasPrefix(operation, "http.platform.runtime_config.") {
+		descriptor.Auth = "jwt+current-admin-session+permission"
+		descriptor.Audit = "none"
+		if method != "GET" {
+			descriptor.Auth += "+recent-mfa-or-current-password+browser-csrf"
+			descriptor.Audit = "required-intent-audit+outbox"
+		}
+	}
 	if strings.HasPrefix(operation, "http.knowledge.") {
 		descriptor.Auth = "none+current-origin-policy"
 		descriptor.Audit = "none"
@@ -288,7 +296,7 @@ func (g *ownedGroup) handle(method, path string, handlers ...gin.HandlerFunc) {
 	case "http.identity.admin_session.refresh":
 		descriptor.Auth = "admin-refresh-cookie+csrf"
 		descriptor.Audit = "required-command+outbox"
-	case "http.identity.admin_self.read", "http.identity.admin_self.logout", "http.identity.admin_self.mfa.enroll", "http.identity.admin_self.mfa.confirm", "http.identity.admin_self.mfa.step_up":
+	case "http.identity.admin_self.read", "http.identity.admin_self.logout", "http.identity.admin_self.password.change", "http.identity.admin_self.mfa.enroll", "http.identity.admin_self.mfa.confirm", "http.identity.admin_self.mfa.step_up":
 		descriptor.Auth = "jwt+current-admin-session+browser-csrf"
 		descriptor.Audit = "required-command+outbox"
 		if operation == "http.identity.admin_self.read" {
@@ -360,6 +368,8 @@ func moduleOwner(handlerName, path string) string {
 		return "feature.personal-documents"
 	case strings.Contains(handlerName, "/internal/modules/features/appearance/homepage.") || strings.Contains(handlerName, "/internal/modules/features/appearance/homepage/"), strings.Contains(handlerName, "/internal/modules/features/appearance/webtheme.") || strings.Contains(handlerName, "/internal/modules/features/appearance/webtheme/"):
 		return "feature.appearance"
+	case strings.Contains(handlerName, "/internal/platform/runtimeconfig.") || strings.Contains(handlerName, "/internal/platform/runtimeconfig/"):
+		return "core.platform-api"
 	case strings.Contains(handlerName, "/internal/platform/feature.") || strings.Contains(handlerName, "/internal/platform/feature/"):
 		return "core.feature-registry"
 	case strings.Contains(handlerName, "/internal/platform/reliability.") || strings.Contains(handlerName, "/internal/platform/reliability/"):

@@ -1540,6 +1540,45 @@ paths:
           $ref: '#/components/responses/Conflict'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/admin/identity/password:
+    post:
+      operationId: d_Identity_AdminDomain_ChangePassword
+      summary: POST /api/v1/admin/identity/password
+      tags: [authenticated]
+      x-campusos-stability: experimental
+      x-campusos-ownership: resource-policy
+      x-campusos-module-owner: core.identity
+      x-campusos-scope: current-admin-self
+      x-campusos-operation: http.identity.admin_self.password.change
+      x-campusos-auth: jwt+current-admin-session+browser-csrf
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: X-Admin-CSRF-Token
+          in: header
+          required: false
+          description: Required for browser/cookie requests; CLI body refresh requires explicit server compatibility configuration.
+          schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenericObject'
+      x-campusos-schema-level: generic-experimental
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/v1/admin/identity/refresh:
     post:
       operationId: d_Identity_AdminDomain_Refresh
@@ -9275,6 +9314,145 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+  /api/v1/platform/runtime-config:
+    get:
+      operationId: runtimeConfigHandler_Read
+      summary: GET /api/v1/platform/runtime-config
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: deployment-runtime-file
+      x-campusos-module-owner: core.platform-api
+      x-campusos-scope: platform.runtime_config/current
+      x-campusos-operation: http.platform.runtime_config.read
+      x-campusos-auth: jwt+current-admin-session+permission
+      x-campusos-permission: platform.runtime_config.read
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/RuntimeConfigSnapshot'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+    put:
+      operationId: runtimeConfigHandler_Update
+      summary: PUT /api/v1/platform/runtime-config
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: deployment-runtime-file
+      x-campusos-module-owner: core.platform-api
+      x-campusos-scope: platform.runtime_config/current
+      x-campusos-operation: http.platform.runtime_config.update
+      x-campusos-auth: jwt+current-admin-session+permission+recent-mfa-or-current-password+browser-csrf
+      x-campusos-permission: platform.runtime_config.manage
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: X-Admin-CSRF-Token
+          in: header
+          required: true
+          description: Must match the current administrator CSRF cookie for every configuration write.
+          schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RuntimeConfigUpdate'
+      x-campusos-schema-level: field-contract
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/RuntimeConfigSnapshot'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/platform/runtime-config/document:
+    post:
+      operationId: runtimeConfigHandler_Document
+      summary: POST /api/v1/platform/runtime-config/document
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: deployment-runtime-file
+      x-campusos-module-owner: core.platform-api
+      x-campusos-scope: platform.runtime_config/current
+      x-campusos-operation: http.platform.runtime_config.document
+      x-campusos-auth: jwt+current-admin-session+permission+recent-mfa-or-current-password+browser-csrf
+      x-campusos-permission: platform.runtime_config.manage
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: X-Admin-CSRF-Token
+          in: header
+          required: true
+          description: Must match the current administrator CSRF cookie for every configuration write.
+          schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RuntimeConfigDocumentConfirmation'
+      x-campusos-schema-level: field-contract
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/RuntimeConfigDocument'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
   /api/v1/plugin-authorizations/{name}:
     get:
       operationId: plugin_V5RetiredHTTP
@@ -16843,6 +17021,91 @@ components:
       required: [updated]
       properties:
         updated: {type: boolean, enum: [true]}
+    RuntimeConfigUpdate:
+      type: object
+      additionalProperties: false
+      required: [revision]
+      properties:
+        revision: {type: string, pattern: '^[0-9a-f]{64}$'}
+        restart: {type: boolean, default: false}
+        verification_method:
+          type: string
+          enum: [password, mfa]
+          description: Password confirmation is scoped to this operation; MFA uses the current recently verified session. Omission preserves the existing session policy.
+        current_password:
+          type: string
+          minLength: 1
+          maxLength: 72
+          writeOnly: true
+          description: Required only with verification_method password. Never stored, returned, or used to upgrade session MFA strength.
+        document:
+          type: string
+          maxLength: 262144
+          writeOnly: true
+          description: Complete literal dotenv document for the fixed deployment file. Mutually exclusive with nonempty changes. Noncatalog changes require deployment tooling.
+        changes:
+          type: object
+          additionalProperties: false
+          description: Changed catalog fields only. Omit unchanged credentials; an explicit empty string clears a credential.
+          properties:
+            AUTH_ADMIN_MFA_REQUIRED: {type: string, maxLength: 4096}
+            EMAIL_PROVIDER: {type: string, maxLength: 4096}
+            EMAIL_SMTP_HOST: {type: string, maxLength: 4096}
+            EMAIL_SMTP_PORT: {type: string, maxLength: 4096}
+            EMAIL_SMTP_USERNAME: {type: string, maxLength: 4096}
+            EMAIL_SMTP_PASSWORD: {type: string, maxLength: 4096, writeOnly: true}
+            EMAIL_SMTP_FROM: {type: string, maxLength: 4096}
+            EMAIL_SMTP_TIMEOUT: {type: string, maxLength: 4096}
+            EMAIL_SMTP_STARTTLS: {type: string, maxLength: 4096}
+            CAMPUSOS_PLUGIN_UI_PARENTS: {type: string, maxLength: 4096}
+            AI_ENABLED: {type: string, maxLength: 4096}
+            AI_TIMEOUT: {type: string, maxLength: 4096}
+            AI_MAX_OUTPUT_TOKENS: {type: string, maxLength: 4096}
+            AI_MAX_CONCURRENT: {type: string, maxLength: 4096}
+    RuntimeConfigDocumentConfirmation:
+      type: object
+      additionalProperties: false
+      required: [revision, verification_method]
+      properties:
+        revision: {type: string, pattern: '^[0-9a-f]{64}$'}
+        verification_method: {type: string, enum: [password, mfa]}
+        current_password: {type: string, minLength: 1, maxLength: 72, writeOnly: true}
+    RuntimeConfigDocument:
+      type: object
+      additionalProperties: false
+      required: [content, revision]
+      properties:
+        content: {type: string, description: 'Sensitive complete dotenv. No-store. Never log or persist in browser storage.'}
+        revision: {type: string}
+    RuntimeConfigSnapshot:
+      type: object
+      additionalProperties: false
+      required: [available, revision, generation, pending, restarting, fields, deployment_keys]
+      properties:
+        available: {type: boolean}
+        revision: {type: string}
+        generation: {type: string, pattern: '^[0-9a-f]{32}$'}
+        pending: {type: boolean}
+        restarting: {type: boolean}
+        deployment_keys: {type: array, items: {type: string}, description: 'Changed noncatalog keys requiring deployment tools after this save.'}
+        fields:
+          type: array
+          items: {$ref: '#/components/schemas/RuntimeConfigField'}
+    RuntimeConfigField:
+      type: object
+      additionalProperties: false
+      required: [key, label, group, kind, help, value, active_value, configured, pending]
+      properties:
+        key: {type: string}
+        label: {type: string}
+        group: {type: string}
+        kind: {type: string, enum: [boolean, text, secret, select, number]}
+        help: {type: string}
+        options: {type: array, items: {type: string}}
+        value: {type: string, description: 'Always empty for a secret field; existing credentials are never returned.'}
+        active_value: {type: string, description: 'Active runtime value; always empty for secret fields.'}
+        configured: {type: boolean}
+        pending: {type: boolean}
     PluginV5UIActionRequest:
       type: object
       additionalProperties: false

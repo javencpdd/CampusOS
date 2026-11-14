@@ -18,6 +18,10 @@ type adminExecutionBinding struct {
 // This method does not expand the frozen BoardGovernanceQuery/ResourceGrant
 // contract. User board delegations and management bounds never enter it.
 func (s *BoardGovernanceAuthorityService) LoadAdminExecutionAuthority(ctx context.Context, q identityport.AdminExecutionQuery, resolve identityport.SessionPrincipalResolver, lock bool) (identityport.AdminExecutionAuthority, error) {
+	return s.loadAdminExecutionAuthority(ctx, q, resolve, lock, false)
+}
+
+func (s *BoardGovernanceAuthorityService) loadAdminExecutionAuthority(ctx context.Context, q identityport.AdminExecutionQuery, resolve identityport.SessionPrincipalResolver, lock, runtimePasswordVerified bool) (identityport.AdminExecutionAuthority, error) {
 	if err := q.Validate(); err != nil {
 		return identityport.AdminExecutionAuthority{}, err
 	}
@@ -60,7 +64,10 @@ func (s *BoardGovernanceAuthorityService) LoadAdminExecutionAuthority(ctx contex
 	}
 	a := identityport.AdminExecutionAuthority{Principal: p, Query: q, ExpiresAtMS: binding.Session.ExpiresAt.UnixMilli(), Binding: binding}
 	strength := true
-	if q.RequiresCurrentMFA() && !binding.Session.AdminMFAOptional {
+	if runtimePasswordVerified && (q.PermissionCode != "platform.runtime_config.manage" || q.Scope.Kind != "platform.runtime_config" || q.Scope.ID != "current") {
+		return identityport.AdminExecutionAuthority{}, identityport.ErrResourcePolicyInvalid
+	}
+	if q.RequiresCurrentMFA() && !binding.Session.AdminMFAOptional && !runtimePasswordVerified {
 		strength = p.AuthenticationStrength == "mfa" && binding.Session.MFAAuthenticatedAt != nil
 		if strength {
 			expiry := binding.Session.MFAAuthenticatedAt.Add(AdminGovernanceMFAWindow)

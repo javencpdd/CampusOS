@@ -54,6 +54,7 @@ type Config struct {
 	MFAIssuer             string
 	BootstrapAdminSecret  string
 	AdminBootstrapSecret  string
+	EnsureDefaultAdmin    bool
 	AdminMFAOptional      bool
 	RefreshBodyCompat     bool
 	CookieSecure          bool
@@ -269,7 +270,7 @@ func (r sessionStrengthReader) AuthenticationStrengthForSession(ctx context.Cont
 	return sessions.AuthenticationStrengthForSession(ctx, sessionID)
 }
 
-func (m *Module) Start(context.Context) error {
+func (m *Module) Start(ctx context.Context) error {
 	if m.app == nil || m.users == nil || m.roles == nil || m.adminAccounts == nil || m.challenges == nil || m.challengePolicies == nil || m.sessions == nil || m.recoveryCases == nil || m.mfa == nil {
 		return errors.New("identity module is not registered")
 	}
@@ -368,6 +369,11 @@ func (m *Module) Start(context.Context) error {
 	mfa.SetMeter(meter)
 	if err := m.startAdminDomainServices(authorizationCatalog, reliable); err != nil {
 		return err
+	}
+	if m.config.EnsureDefaultAdmin {
+		if err := service.NewAdminProvisionService(m.adminDomains, authorizationCatalog, reliable).EnsureDefault(ctx); err != nil {
+			return fmt.Errorf("initialize default administrator: %w", err)
+		}
 	}
 	mfa.SetSessionRevoker(sessions)
 	mfa.SetSessionStrengthReader(sessions)
@@ -514,7 +520,7 @@ func (m *Module) startAdminDomainServices(catalog repository.AuthorizationReposi
 	})
 	domainConfig := service.DefaultAdminDomainConfig()
 	bootstrapSecret := strings.TrimSpace(m.config.AdminBootstrapSecret)
-	domainConfig.BootstrapEnabled = len(bootstrapSecret) >= 16 && len(bootstrapSecret) <= 4096
+	domainConfig.BootstrapEnabled = len(bootstrapSecret) >= 8 && len(bootstrapSecret) <= 4096
 	domainConfig.AdminMFAOptional = m.config.AdminMFAOptional
 	m.adminDomainService = service.NewAdminDomainService(m.adminDomains, catalog, domainConfig)
 	m.adminDomainService.SetReliability(reliable)

@@ -31,8 +31,8 @@ func validateDeployment(cfg *config.Config) error {
 		return fmt.Errorf("AUTH_ALLOW_DEVELOPMENT_DEFAULT_ADMIN is allowed only when CAMPUSOS_ENV=development")
 	}
 	if proof := strings.TrimSpace(cfg.Auth.AdminBootstrapSecret); proof != "" {
-		if len(proof) < 16 || len(proof) > 4096 {
-			return fmt.Errorf("AUTH_ADMIN_BOOTSTRAP_SECRET must contain 16 to 4096 bytes when enabled")
+		if len(proof) < 8 || len(proof) > 4096 {
+			return fmt.Errorf("AUTH_ADMIN_BOOTSTRAP_SECRET must contain 8 to 4096 bytes when enabled")
 		}
 		if proof == strings.TrimSpace(cfg.Auth.BootstrapAdminSecret) {
 			return fmt.Errorf("AUTH_ADMIN_BOOTSTRAP_SECRET must differ from the legacy user bootstrap secret")

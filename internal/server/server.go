@@ -1,6 +1,7 @@
 package server
 
 import (
+	"errors"
 	academicterm "github.com/campusos/CampusOS/internal/modules/core/academicterm"
 	communitycore "github.com/campusos/CampusOS/internal/modules/core/community"
 	"github.com/campusos/CampusOS/internal/modules/core/emaildelivery"
@@ -31,6 +32,7 @@ import (
 )
 
 type Server struct {
+	restartRequested  chan struct{}
 	cfg               *config.Config
 	bus               eventbus.EventBus
 	manager           *plugin.Manager
@@ -63,7 +65,18 @@ type Server struct {
 	pluginUI          *plugin.V5UIHost
 }
 
-func New(cfg *config.Config) *Server { return &Server{cfg: cfg} }
+var ErrRestart = errors.New("runtime configuration restart requested")
+
+func New(cfg *config.Config) *Server {
+	return &Server{cfg: cfg, restartRequested: make(chan struct{}, 1)}
+}
+
+func (s *Server) requestRestart() {
+	select {
+	case s.restartRequested <- struct{}{}:
+	default:
+	}
+}
 
 // Run owns only the process bootstrap. Business composition lives in application.go
 // and is migrated module by module without changing the public server constructor.

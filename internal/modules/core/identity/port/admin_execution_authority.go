@@ -41,6 +41,10 @@ func (q AdminExecutionQuery) Validate() error {
 		if q.Scope.Kind != "community.board" || !validOpaqueID(q.Scope.ID) {
 			return ErrResourcePolicyInvalid
 		}
+	case "platform.runtime_config.read", "platform.runtime_config.manage":
+		if q.Scope.Kind != "platform.runtime_config" || q.Scope.ID != "current" {
+			return ErrResourcePolicyInvalid
+		}
 	case "platform.reliability.read":
 		if q.Scope.Kind != "platform.event_metadata" || q.Scope.ID != "recent" {
 			return ErrResourcePolicyInvalid
@@ -75,7 +79,7 @@ func (q AdminExecutionQuery) RequiresCurrentMFA() bool {
 	if q.PermissionCode == "personal_space.space.manage" && (q.Scope.Kind == "personal_space.storage_status" || q.Scope.Kind == "personal_space.space_summary") {
 		return false
 	}
-	return q.PermissionCode != "ai.ai.read" && q.PermissionCode != "knowledge.collection.read" && q.PermissionCode != "plugin.plugin.read" && q.PermissionCode != "identity.integration.read" && q.PermissionCode != "community.thread.read" && q.PermissionCode != "platform.reliability.read" && q.PermissionCode != "personal_space.asset.read_audit"
+	return q.PermissionCode != "platform.runtime_config.read" && q.PermissionCode != "ai.ai.read" && q.PermissionCode != "knowledge.collection.read" && q.PermissionCode != "plugin.plugin.read" && q.PermissionCode != "identity.integration.read" && q.PermissionCode != "community.thread.read" && q.PermissionCode != "platform.reliability.read" && q.PermissionCode != "personal_space.asset.read_audit"
 }
 
 type AdminExecutionAuthority struct {

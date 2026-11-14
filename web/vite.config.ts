@@ -7,7 +7,10 @@ import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
 const apiProxyTarget = process.env.CAMPUSOS_API_PROXY_TARGET || 'http://localhost:8080'
 
 export default defineConfig({
-  plugins: [vue(), Components({ resolvers: [ElementPlusResolver()], dts: false })],
+  // main.ts already imports the full Element Plus stylesheet. Injecting
+  // per-component style modules makes lazy routes trigger dep re-optimization
+  // and repeated full-page reloads on the first development visit.
+  plugins: [vue(), Components({ resolvers: [ElementPlusResolver({ importStyle: false })], dts: false })],
   resolve: {
     alias: {
       '@': resolve(__dirname, 'src'),

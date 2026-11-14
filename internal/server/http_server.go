@@ -33,26 +33,32 @@ func (s *Server) serveHTTP(router http.Handler) error {
 	shutdownSignal, stopSignals := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stopSignals()
 
+	restarting := false
 	select {
 	case err := <-serverErrors:
 		if errors.Is(err, http.ErrServerClosed) {
 			return nil
 		}
 		return err
+	case <-s.restartRequested:
+		restarting = true
 	case <-shutdownSignal.Done():
-		log.Printf("🛑 CampusOS API 正在优雅停止")
-		shutdownContext, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-		if uiServer != nil {
-			_ = uiServer.Shutdown(shutdownContext)
-		}
-		if err := httpServer.Shutdown(shutdownContext); err != nil {
-			_ = httpServer.Close()
-			return err
-		}
-		if err := <-serverErrors; err != nil && !errors.Is(err, http.ErrServerClosed) {
-			return err
-		}
-		return nil
 	}
+	log.Printf("🛑 CampusOS API 正在优雅停止")
+	shutdownContext, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if uiServer != nil {
+		_ = uiServer.Shutdown(shutdownContext)
+	}
+	if err := httpServer.Shutdown(shutdownContext); err != nil {
+		_ = httpServer.Close()
+		return err
+	}
+	if err := <-serverErrors; err != nil && !errors.Is(err, http.ErrServerClosed) {
+		return err
+	}
+	if restarting {
+		return ErrRestart
+	}
+	return nil
 }

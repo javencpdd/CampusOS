@@ -30,6 +30,8 @@ func runIdentity(args []string, stdout, stderr io.Writer, input *os.File) int {
 	}
 	var err error
 	switch args[0] {
+	case "create-admin":
+		err = runLocalAdminCreate(args[1:], stdout, input)
 	case "reset-password":
 		err = runSystemPasswordReset(args[1:], stdout, input)
 	case "restore-admin-admission":
@@ -214,6 +216,7 @@ func readLocalPassword(input *os.File, stdout io.Writer, prompt string) (string,
 func printIdentityUsage(writer io.Writer) {
 	fmt.Fprintln(writer, "usage: campusosctl identity <command>")
 	fmt.Fprintln(writer, "commands:")
+	fmt.Fprintln(writer, "  create-admin              add an independent security Admin from local deployment input")
 	fmt.Fprintln(writer, "  reset-password            recover only the independent system Admin password")
 	fmt.Fprintln(writer, "  restore-admin-admission   restore one suspended independent Admin account")
 	fmt.Fprintln(writer, "  reset-mfa                 disable a lost independent Admin factor")

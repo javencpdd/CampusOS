@@ -15,6 +15,7 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 
 FIREWALL_RULE_NAME = "CampusOS Dev UI (Private LAN)"
@@ -452,8 +453,31 @@ def assess_windows_firewall_rules(
     return FirewallAssessment(bool(covered) and not missing and not unsafe, unsafe, tuple(details))
 
 
-def probe_http(address: str, port: int, path: str, timeout: float) -> tuple[bool, str]:
-    connection = http.client.HTTPConnection(address, port, timeout=timeout)
+def plugin_ui_lan_issues(origin: str, parents: str, expected_parents: list[str]) -> list[str]:
+    """Check the effective API settings, beyond a successful gateway IP probe."""
+    issues = []
+    try:
+        parsed = urlsplit(origin.replace("{isolation}", "a" * 32))
+        host = (parsed.hostname or "").lower()
+        if (origin.count("{isolation}") != 1 or parsed.scheme not in {"http", "https"}
+                or not host.startswith("a" * 32 + ".") or parsed.username or parsed.password
+                or parsed.path or parsed.query or parsed.fragment
+                or parsed.port is not None and not 1 <= parsed.port <= 65535):
+            raise ValueError("invalid isolation origin")
+        if host.endswith(".localhost"):
+            issues.append("CAMPUSOS_PLUGIN_UI_DOMAIN=localhost points remote browsers to themselves; configure a wildcard DNS domain resolving to this development machine")
+    except ValueError:
+        issues.append("CAMPUSOS_PLUGIN_UI_ORIGIN must contain one {isolation} subdomain and a valid HTTP(S) origin")
+    allowed = set(parents.split())
+    for parent in expected_parents:
+        if parent not in allowed:
+            issues.append(f"CAMPUSOS_PLUGIN_UI_PARENTS is missing the exact LAN parent Origin {parent}")
+    return issues
+
+
+def probe_http(address: str, port: int, path: str, timeout: float, scheme: str = "http") -> tuple[bool, str]:
+    connection_type = http.client.HTTPSConnection if scheme == "https" else http.client.HTTPConnection
+    connection = connection_type(address, port, timeout=timeout)
     try:
         connection.request("GET", path, headers={"Connection": "close"})
         response = connection.getresponse()
@@ -566,6 +590,33 @@ def main() -> int:
                 failures.append(f"{surface.label} probe failed through {interface.address}:{port}: {detail}")
         if address_ok:
             successful_addresses.append(interface.address)
+
+    print()
+    print("Plugin isolation Origin (effective API configuration):")
+    api_env = config.get("services", {}).get("api", {}).get("environment", {})
+    ui_origin = str(api_env.get("CAMPUSOS_PLUGIN_UI_ORIGIN") or "")
+    ui_parents = str(api_env.get("CAMPUSOS_PLUGIN_UI_PARENTS") or "")
+    expected_parents = [
+        f"http://{interface.address}:{effective_ports[surface.service]}"
+        for interface in interfaces for surface in SURFACES if surface.service in {"web", "admin"}
+    ]
+    ui_issues = plugin_ui_lan_issues(ui_origin, ui_parents, expected_parents)
+    for issue in ui_issues:
+        print(f"[FAIL] {issue}")
+    failures.extend(ui_issues)
+    if not ui_issues:
+        target = urlsplit(ui_origin.replace("{isolation}", "a" * 32))
+        target_port = target.port or (443 if target.scheme == "https" else 80)
+        try:
+            resolved = {record[4][0] for record in socket.getaddrinfo(target.hostname, target_port, type=socket.SOCK_STREAM)}
+            if not resolved or any(ipaddress.ip_address(address).is_loopback for address in resolved):
+                raise ValueError("isolation DNS resolved to loopback instead of a LAN destination")
+            ok, detail = probe_http(target.hostname, target_port, "/health", args.timeout, target.scheme)
+        except (OSError, ValueError) as error:
+            ok, detail = False, str(error)
+        print(f"[{'PASS' if ok else 'FAIL'}] {target.scheme}://{target.netloc}/health -> {detail}")
+        if not ok:
+            failures.append(f"plugin isolation domain probe failed: {detail}")
 
     if os.name == "nt":
         firewall = windows_firewall_rules(root)

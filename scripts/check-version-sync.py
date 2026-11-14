@@ -21,6 +21,29 @@ def match(path: str, pattern: str, label: str) -> str:
     return found.group(1)
 
 
+def current_development_stage() -> str:
+    status = json.loads(read("config/project-status.json"))
+    if not isinstance(status, dict) or status.get("schema") != "campusos.project-status/v1":
+        raise ValueError("invalid project status schema")
+    stage = status.get("development_stage")
+    plan = status.get("plan")
+    if not isinstance(stage, str) or not re.fullmatch(r"v\d+\.\d+-dev", stage):
+        raise ValueError("invalid development stage in project status")
+    if not isinstance(plan, str) or not plan:
+        raise ValueError("missing current plan in project status")
+    plan_path = (ROOT / plan).resolve()
+    if not plan_path.is_relative_to(ROOT.resolve()):
+        raise ValueError("current plan must be inside the repository")
+    heading = re.search(
+        r"^#\s+CampusOS\s+(v\d+\.\d+)\b",
+        plan_path.read_text(encoding="utf-8"),
+        re.MULTILINE,
+    )
+    if not heading or heading.group(1) != stage.removesuffix("-dev"):
+        raise ValueError("development stage does not match the explicitly selected plan")
+    return stage
+
+
 def main() -> int:
     errors: list[str] = []
     try:
@@ -98,7 +121,9 @@ def main() -> int:
                     errors.append(f"{path} default image tag={tag}, expected={application}")
 
         display = f"v{application}"
-        development_stage = f"v{major_minor}-dev" if application.endswith("-dev") else ""
+        # Runtime release identity and the explicitly selected development plan
+        # can advance independently. Keep every runtime/package/tag check above.
+        development_stage = current_development_stage()
         for path in (
             "README.md",
             "docs/README.md",
@@ -108,7 +133,7 @@ def main() -> int:
             content = read(path)
             if display not in content:
                 errors.append(f"{path} does not show application version {display}")
-            if development_stage and development_stage not in content:
+            if development_stage not in content:
                 errors.append(f"{path} does not show development stage {development_stage}")
     except (KeyError, OSError, ValueError, json.JSONDecodeError) as error:
         errors.append(str(error))
@@ -119,7 +144,8 @@ def main() -> int:
         return 1
     print(
         "version sync check passed: "
-        f"application={application}, sdk={expected_sdk}, openapi={expected_openapi}"
+        f"application={application}, development_stage={development_stage}, "
+        f"sdk={expected_sdk}, openapi={expected_openapi}"
     )
     return 0
 

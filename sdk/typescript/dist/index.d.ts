@@ -1,6 +1,8 @@
+export * from "./random-request-id.js";
 export declare const UI_CONTRACT_VERSION: "campusos.ui/v1";
 export * from "./exact-json.js";
 export * from "./v5-configuration-form.js";
+export * from "./v5-lifecycle-presentation.js";
 export * from "./isolated-plugin-bridge.js";
 export * from "./plugin-frame-policy.js";
 export declare const CAPABILITY_CONTRACT_VERSION: "campusos.capability/v1";
@@ -189,6 +191,6 @@ export type { IntegrationRuntimeInputV2, IntegrationRuntimeDecisionV2, Integrati
 export type { PluginV5PublisherTrustKey, PluginV5PublisherTrustStore, PluginV5PackageCheckResult, PluginV5PackageErrorCode, } from "./plugin-v5-package.js";
 export type { PluginV5Coordinate, PluginV5Installation, PluginV5Operation, PluginV5InstallationCommand, PluginV5AdminInstallationCommand, PluginV5InstallationErrorCode, } from "./plugin-v5-installation.js";
 export { knowledgeSearch, knowledgeSource } from "./knowledge-public.js";
-export type { KnowledgeHostTransport, KnowledgeSearchRequest, KnowledgeSourceRequest, KnowledgeReference, KnowledgeCitation, KnowledgeSearchHit, KnowledgeSearchPage, KnowledgeSource } from "./knowledge-public.js";
+export type { KnowledgeHostTransport, KnowledgeSearchRequest, KnowledgeSourceRequest, KnowledgeReference, KnowledgeCitation, KnowledgeSearchHit, KnowledgeSearchPage, KnowledgeSource, } from "./knowledge-public.js";
 export { modelChat, knowledgeAnswer } from "./ai-knowledge-host.js";
-export type { ModelProfile, AIKnowledgeCapability, AIKnowledgeTransport, ModelChatRequest, PublicAnswerRequest, ModelChatAnswer, RAGEvidence, PublicRAGAnswer } from "./ai-knowledge-host.js";
+export type { ModelProfile, AIKnowledgeCapability, AIKnowledgeTransport, ModelChatRequest, PublicAnswerRequest, ModelChatAnswer, RAGEvidence, PublicRAGAnswer, } from "./ai-knowledge-host.js";

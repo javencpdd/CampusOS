@@ -5,7 +5,10 @@
         <h2>插件本人配置</h2>
         <p>选择已安装的版本，分别管理普通配置和密钥引用。</p>
       </div>
-      <button type="button" :disabled="loading || saving" @click="refresh">重新加载</button>
+      <nav class="config-actions" aria-label="插件配置导航">
+        <router-link class="back-link" to="/plugins">返回插件中心</router-link>
+        <button type="button" :disabled="loading || saving" @click="refresh">重新加载</button>
+      </nav>
     </header>
     <p v-if="error" role="alert">{{ error }}</p>
     <p v-if="message" role="status">{{ message }}</p>
@@ -374,6 +377,12 @@ header {
   justify-content: space-between;
   gap: 12px;
 }
+.config-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
 h2,
 h3 {
   margin: 0;
@@ -408,7 +417,8 @@ select {
   font: inherit;
   max-width: 100%;
 }
-button {
+button,
+.back-link {
   padding: 9px 14px;
   border: 1px solid #b5becb;
   border-radius: 4px;
@@ -416,6 +426,12 @@ button {
   color: #1d4ed8;
   cursor: pointer;
   overflow-wrap: anywhere;
+}
+.back-link {
+  text-decoration: none;
+}
+.back-link:hover {
+  background: #edf4ff;
 }
 button:disabled {
   cursor: default;

@@ -8,14 +8,19 @@
       <button type="button" :disabled="loading || saving" @click="refresh">
         重新加载
       </button>
-      <button
-        v-if="canConfigure"
-        type="button"
-        :disabled="saving"
-        @click="confirmMFA"
-      >
-        确认管理员身份
-      </button>
+      <div v-if="canConfigure && requiresMFA" class="mfa-confirmation">
+        <button
+          type="button"
+          :disabled="saving"
+          aria-describedby="plugin-config-mfa-help"
+          @click="confirmMFA"
+        >
+          管理员二次验证（MFA）
+        </button>
+        <small id="plugin-config-mfa-help"
+          >需要二次验证时使用，有效期为 15 分钟；验证通过后再保存配置。</small
+        >
+      </div>
     </header>
     <p v-if="error" role="alert">{{ error }}</p>
     <p v-if="message" role="status">{{ message }}</p>
@@ -277,6 +282,9 @@ const canConfigure = computed(
     profile.value?.permission_codes.includes("plugin.plugin.configure") ===
     true,
 );
+// Older profiles may omit the policy flag; keep the existing conservative
+// verification entry until the server explicitly reports MFA disabled.
+const requiresMFA = computed(() => profile.value?.mfa_required !== false);
 const secretCount = computed(() => {
   const d = selected.value?.release.manifest.configuration as any;
   return Array.isArray(d?.secret_names) ? d.secret_names.length : 0;
@@ -291,7 +299,7 @@ let identity = stamp();
 const hasField = (key: string) =>
   Object.prototype.hasOwnProperty.call(draft.value, key);
 function confirmMFA() {
-  if (identityCurrent() && canConfigure.value)
+  if (identityCurrent() && canConfigure.value && requiresMFA.value)
     window.dispatchEvent(new Event("campusos:admin-mfa-step-up-required"));
 }
 function clear() {
@@ -605,5 +613,14 @@ aside {
   .columns {
     grid-template-columns: minmax(0, 1fr);
   }
+}
+.mfa-confirmation {
+  display: grid;
+  gap: 6px;
+  max-width: 320px;
+}
+.mfa-confirmation small {
+  color: #637083;
+  line-height: 1.5;
 }
 </style>

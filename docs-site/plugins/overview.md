@@ -1,6 +1,6 @@
 # v5 外部插件体系
 
-> 更新时间：2026-11-15（Asia/Shanghai）。当前 v1.2 按阶段验收；V12-05 提供 Linux 固定 worker Wasm 执行，V12-06 Linux范围已验收，Windows按用户要求延期、仍未验收。
+> 更新时间：2026-10-28（Asia/Shanghai）。当前开发主线v1.2，运行标识v1.1.0-dev；各阶段Linux证据不替代当前整版Final。Windows Docker与LAN状态见[项目进展](/project/current-roadmap)。
 
 | 目标 | 类型 | 边界 |
 | --- | --- | --- |
@@ -13,12 +13,32 @@
 
 管理员在 `/plugins` 导入包和独立签名文件，分别安装、按版本批准业务能力/运行资源、启用。用户在自己的 `/plugins` 安装已获批版本，确认当前用途并启用。配置页由不可变声明生成；普通值和 Secret 引用分别提交。撤权/到期后本人安装仍可卸载。
 
-PDF Viewer `3.0.0-dev.2` 是 `runtime: none` 的 UI-only 示例：文章附件、个人资源和个人文档的 PDF 通过宿主选择的有限资源句柄预览。PC/移动端提供弹窗、侧边、全屏、新标签页；没有插件仍可下载。Echo 是后端包合同示例，当前 Echo/WASI 产物尚未转换为新的有限 JSON ABI，包检查通过不代表该示例能由 Wasm Runner 执行。
+用户通过“本人配置与密钥引用”进入配置页后，可用页面顶部的“返回插件中心”直接回到 `/plugins`；直接打开配置页时也可使用该入口。
+
+后台“插件系统配置”中的“管理员二次验证（MFA）”仅在当前策略未关闭时显示，使用认证器验证码，验证有效期为15分钟。验证通过后再决定保存配置，页面不会自动重试保存；该入口不用于审批或启动插件。关闭MFA策略后不显示此按钮。
+
+## 安装与使用引导
+
+| 管理端 | 用户端 |
+| --- | --- |
+| 1. 安装到本站 | 1. 安装到本人账号 |
+| 2. 审批能力与资源并保存 | 2. 查看用途、勾选并提交同意 |
+| 3. 单独启用 | 3. 单独启用并使用 |
+
+页面顶部显示步骤进度和“下一步”。管理员勾选框是草稿，每项权限同时显示服务端已保存的批准状态；有未保存修改时，先保存或恢复，再启用。用户勾选用途同意后，也要点击提交才会保存。本站未启用或运行环境未就绪时，用户端会说明需要管理员处理。
+
+正在启动时自动确认有限次数的状态；就绪或出现明确阻塞后停止，保留手动刷新。RSS启用后可以直接“打开插件”，PDF通过附件/文件的预览入口使用。导入、技术详情、资源额度和撤回/卸载默认折叠，可点击展开；当前需要处理的审批或同意会自动展开。
+
+后台操作顺序为“导入 → 安装 → 保存此版本审批 → 启用”。未审批、审批过期或缺少必需能力/运行资源时，启用按钮会禁用并显示原因。勾选能力后还需保存审批；保存审批会停用当前安装，再单独启用。用户列表展示已安装且当前审批有效的版本，实际运行仍取决于启用状态和运行环境。
+
+操作失败后保留当前插件详情与审批草稿，重新读取状态；无法确认状态时暂停后续操作，使用“刷新当前状态”，不自动重试写操作。身份或权限变化仍会清理旧内容。“等待执行器（尚未运行）”表示启用请求尚未实际运行，需要先配置对应执行器。
+
+PDF Viewer是`runtime: none`的UI-only示例：文章附件、个人资源和个人文档的PDF通过宿主选择的有限资源句柄预览。PC/移动端提供弹窗、侧边、全屏、新标签页；没有插件仍可下载。当前作者源码为`3.0.0-dev.4`（.168），已有握手/取消、类型/构建和CLI包校验证据；未签名导入或自动升级既有实例。不可变安装版本以实例实际目录为准，不能由源码版本推断。Echo等独立SDK示例的打包和实际运行各有合同，不因包检查通过就推断任意Wasm产物可执行。
 
 UI 使用声明式 opaque 沙箱或当前证明的独立子域，由有限 MessagePort 访问获准资源。[RSS 2.0.0 图文订阅插件](/plugins/rss-publisher)以普通网页加载，JS 解析在插件包内，通过通用 Broker 读取公开内容和转存图片，再由用户在原编辑器核对发布。此段更新时间：2026-11-15（Asia/Shanghai）。授权、原业务 ACL 和资源修订始终由宿主复核。Wasm/Container 的 CPU/内存/跨进程隔离与恢复验收不由 UI-only 运行替代。
 
-继续阅读：[Manifest 与配置](/plugins/manifest)、[隔离 UI 与 Bridge](/plugins/frontend-runtime)、[授权与资源访问](/plugins/authorization-v3)、签名包与管理操作（仓库 `docs/help/插件v5包与签名操作说明.md`）。旧 v4 教程仅供历史参考。
+继续阅读：[Manifest与配置](/plugins/manifest)、[隔离UI与Bridge](/plugins/frontend-runtime)、[授权与资源访问](/plugins/authorization-v3)、[v4 PDF历史教程](/plugins/pdf-viewer-tutorial)，以及仓库`docs/help/插件v5包与签名操作说明.md`。旧协议说明保留其明确的历史范围。
 
-Linux 原生 API 可按[配置与端口](/deployment/configuration#v12-05-wasm-执行器)显式启用固定 worker。真实 CPU/RSS/总预算、当前授权、有限公开帖子 Host 读取、配置和元数据、到期/撤销/进程故障及重启回收见仓库 `docs/api/v1.2插件Wasm执行沙箱合同.md`、进度 `.123` 和 `v12-05-runtime-exit-linux.json`。默认空配置仍保持 runtime_unavailable；内建 AI/RAG 消费接线保留14c。
+Linux原生API可按[执行器配置](/deployment/configuration#v12-05-wasm-执行器)显式启用固定worker。真实CPU/RSS/总预算、当前授权、有限公开帖子Host读取、到期/撤销/故障和重启回收见仓库.123及`v12-05-runtime-exit-linux.json`；默认空配置仍保持runtime_unavailable。
 
-Container后端按[执行器配置](/deployment/configuration#v12-06-container-执行器)显式启用，镜像实现有限管道协议。真实Linux隔离、HTTP/gRPC、Host Broker与当前代次生命周期见仓库 `.125` 与Container执行合同；Windows验收按用户要求延期，完整跨平台06尚未退出；后续Linux阶段可按Linux依赖推进，用户范围决定见仓库`.128`。
+Container后端按[执行器配置](/deployment/configuration#v12-06-container-执行器)显式启用，镜像实现有限管道协议。Linux隔离、HTTP/gRPC、Host Broker及代次生命周期有.125等阶段证据；升级与检查点回退、独立作者包及[AI/公开知识双向接入](/guide/plugin-ai-knowledge)分别在07、08a和14c留证。内置AI/Knowledge无需安装插件即可运行。最新初始化/MFA等改动后的整版候选仍需复验，Windows必需路径和未决项以[项目进展](/project/current-roadmap)为准。

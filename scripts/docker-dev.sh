@@ -291,6 +291,13 @@ set_developer_identity() {
 set_developer_identity
 
 compose() {
+  # Only the standard local file is mounted at this stable container path.
+  # Custom env files must not accidentally edit another deployment's config.
+  local managed_env_path=""
+  if [[ "$ENV_FILE" == "$LOCAL_ENV_FILE" ]]; then
+    managed_env_path="/workspace/deploy/docker/.env.dev.local"
+  fi
+  export CAMPUSOS_DEV_MANAGED_ENV_FILE="$managed_env_path"
   local args=(docker compose --env-file "$ENV_FILE")
   if [[ -n "${CAMPUSOS_DOCKER_PROJECT:-}" ]]; then
     args+=(--project-name "$CAMPUSOS_DOCKER_PROJECT")
@@ -516,7 +523,7 @@ case "$command" in
     # below individual Go package directories.
     compose run --rm --no-deps \
       api bash -c \
-      'mkdir -p /tmp/campusos-go-test/plugin_data /tmp/campusos-go-test/module_data && PLUGINS_DIR=/workspace/data/plugins PLUGIN_DATA_DIR=/tmp/campusos-go-test/plugin_data MODULE_DATA_DIR=/tmp/campusos-go-test/module_data RESOURCE_DIR=/workspace/data/resources GOFLAGS=-buildvcs=false go test ./... -count=1'
+      'mkdir -p /tmp/campusos-go-test/plugin_data /tmp/campusos-go-test/module_data && CAMPUSOS_MANAGED_ENV_FILE= PLUGINS_DIR=/workspace/data/plugins PLUGIN_DATA_DIR=/tmp/campusos-go-test/plugin_data MODULE_DATA_DIR=/tmp/campusos-go-test/module_data RESOURCE_DIR=/workspace/data/resources GOFLAGS=-buildvcs=false go test ./... -count=1'
     ;;
   shell)
     compose exec api bash

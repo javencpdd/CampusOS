@@ -236,6 +236,8 @@ func moduleOwnerFor(handler, path string) string {
 		return "feature.appearance"
 	case strings.HasPrefix(path, APIPrefix+"/features"):
 		return "core.feature-registry"
+	case strings.HasPrefix(path, APIPrefix+"/platform/runtime-config"):
+		return "core.platform-api"
 	case strings.HasPrefix(path, APIPrefix+"/platform/reliability"):
 		return "core.reliability"
 	case strings.HasPrefix(path, APIPrefix+"/platform/email-delivery"):
@@ -495,7 +497,11 @@ func OpenAPI(routes []RouteContract) []byte {
 					out.WriteString("        - name: X-Plugin-UI-Proof\n          in: header\n          required: false\n          description: Delegated iframe configuration writes must supply the current UI proof, rechecked inside the family-locked configure transaction. Native user configuration omits this header.\n          schema: {type: string, pattern: '^sha256:[a-f0-9]{64}$'}\n")
 				}
 				if requiresAdminCSRF {
-					out.WriteString("        - name: X-Admin-CSRF-Token\n          in: header\n          required: false\n          description: Required for browser/cookie requests; CLI body refresh requires explicit server compatibility configuration.\n          schema: {type: string}\n")
+					if strings.HasPrefix(route.OperationCode, "http.platform.runtime_config.") {
+						out.WriteString("        - name: X-Admin-CSRF-Token\n          in: header\n          required: true\n          description: Must match the current administrator CSRF cookie for every configuration write.\n          schema: {type: string}\n")
+					} else {
+						out.WriteString("        - name: X-Admin-CSRF-Token\n          in: header\n          required: false\n          description: Required for browser/cookie requests; CLI body refresh requires explicit server compatibility configuration.\n          schema: {type: string}\n")
+					}
 				}
 				if requiresCSRF {
 					out.WriteString("        - name: X-CSRF-Token\n          in: header\n          required: true\n          schema: { type: string }\n")
@@ -642,6 +648,16 @@ func applyResourceGovernanceContract(route *RouteContract) {
 		route.Audit = "request-log-no-content"
 	}
 
+	if strings.HasPrefix(route.OperationCode, "http.platform.runtime_config.") {
+		route.Auth = "jwt+current-admin-session+permission"
+		route.Scope = "platform.runtime_config/current"
+		route.Ownership = "deployment-runtime-file"
+		route.Audit = "none"
+		if route.Method != "GET" {
+			route.Auth += "+recent-mfa-or-current-password+browser-csrf"
+			route.Audit = "required-intent-audit+outbox"
+		}
+	}
 	if strings.HasPrefix(route.OperationCode, "http.ai.") {
 		route.Auth = "jwt+current-admin-session+permission"
 		route.Scope = "ai.profile_inventory/all"
@@ -725,7 +741,7 @@ func applyResourceGovernanceContract(route *RouteContract) {
 		route.Scope = "admin-refresh-family"
 		route.Audit = "required-command+outbox"
 		return
-	case "http.identity.admin_self.read", "http.identity.admin_self.logout", "http.identity.admin_self.mfa.enroll", "http.identity.admin_self.mfa.confirm", "http.identity.admin_self.mfa.step_up":
+	case "http.identity.admin_self.read", "http.identity.admin_self.logout", "http.identity.admin_self.password.change", "http.identity.admin_self.mfa.enroll", "http.identity.admin_self.mfa.confirm", "http.identity.admin_self.mfa.step_up":
 		route.Auth = "jwt+current-admin-session+browser-csrf"
 		route.Ownership = "resource-policy"
 		route.Scope = "current-admin-self"

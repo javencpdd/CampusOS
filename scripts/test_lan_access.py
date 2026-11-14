@@ -78,6 +78,31 @@ class LanAccessTest(unittest.TestCase):
             },
         )
 
+    def test_plugin_lan_rejects_localhost_even_when_gateway_port_is_open(self) -> None:
+        for domain in ("localhost", "LOCALHOST", "plugins.localhost"):
+            with self.subTest(domain=domain):
+                issues = MODULE.plugin_ui_lan_issues(
+                    f"http://{{isolation}}.{domain}:3003", "http://192.168.1.20:3000",
+                    ["http://192.168.1.20:3000"],
+                )
+                self.assertTrue(any("remote browsers" in issue for issue in issues))
+
+    def test_plugin_lan_checks_exact_parents_and_accepts_dedicated_domain(self) -> None:
+        origin = "http://{isolation}.plugins.example.test:3003"
+        expected = ["http://192.168.1.20:3000", "http://192.168.1.20:3001"]
+        self.assertEqual(MODULE.plugin_ui_lan_issues(origin, " ".join(expected), expected), [])
+        issues = MODULE.plugin_ui_lan_issues(origin, "http://localhost:3000 http://192.168.1.20:3000", expected)
+        self.assertEqual(len(issues), 1)
+        self.assertIn(expected[1], issues[0])
+
+    def test_plugin_lan_rejects_malformed_isolation_origins(self) -> None:
+        for origin in ("", "http://localhost:3003", "http://{isolation}.example.test:65536",
+                       "http://{isolation}.example.test:0", "http://{isolation}.example.test/path",
+                       "http://name:password@{isolation}.example.test", "ftp://{isolation}.example.test",
+                       "http://{isolation}.{isolation}.example.test"):
+            with self.subTest(origin=origin):
+                self.assertTrue(MODULE.plugin_ui_lan_issues(origin, "", []))
+
     def test_linux_interfaces_prefers_default_route_and_reports_subnet(self) -> None:
         addresses = json.dumps(
             [

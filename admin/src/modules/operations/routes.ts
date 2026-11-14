@@ -1,6 +1,7 @@
 import type { RouteRecordRaw } from "vue-router";
 
 export const operationRoutes: RouteRecordRaw[] = [
+  { path: "runtime-config", name: "RuntimeConfig", component: () => import("./pages/RuntimeConfigView.vue"), meta: { title: "运行配置", adminOnly: true } },
   {
     path: "events",
     name: "Events",

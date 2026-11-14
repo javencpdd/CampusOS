@@ -9,11 +9,13 @@
       <el-button :icon="Refresh" circle title="刷新" :loading="loading" @click="load" />
     </header>
 
+    <el-alert v-if="loadError" :title="loadError" type="error" :closable="false" role="alert" />
+
     <el-alert
       type="info"
       :closable="false"
       show-icon
-      title="Feature Store 是启停和配置的唯一权威状态；restart 功能在 API 重启后生效，停用不会删除数据。"
+      title="停用功能不会删除数据。标记为“待重启”的改动需要重启 API；知识检索启用后立即生效。"
     />
 
     <el-alert
@@ -48,7 +50,7 @@
       </el-table-column>
       <el-table-column prop="description" label="职责" min-width="280" />
       <el-table-column label="生效方式" width="120" align="center">
-        <template #default="{ row }"><el-tag effect="plain">{{ row.state?.activation_mode || '-' }}</el-tag></template>
+        <template #default="{ row }"><el-tag effect="plain">{{ activationLabels[row.state?.activation_mode] || row.state?.activation_mode || '-' }}</el-tag></template>
       </el-table-column>
       <el-table-column label="当前状态" width="150" align="center">
         <template #default="{ row }">
@@ -60,6 +62,7 @@
       </el-table-column>
       <el-table-column label="配置入口" min-width="240">
         <template #default="{ row }">
+          <el-button v-if="row.management" size="small" plain @click="$router.push(row.management.path)">{{ row.management.label }}</el-button>
           <el-button
             v-for="source in row.configSources"
             :key="source.name"
@@ -76,6 +79,9 @@
             inline-prompt
             active-text="启用"
             inactive-text="停用"
+            :disabled="loading || Boolean(loadError) || Boolean(changingID) || row.state?.activation_mode === 'always-on'"
+            :loading="changingID === row.id"
+            :aria-label="`${row.label}启停`"
             @change="toggle(row, Boolean($event))"
           />
         </template>
@@ -118,10 +124,13 @@ import { onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Refresh } from '@element-plus/icons-vue'
 import { featureApi } from '@/modules/features/api'
-import { builtinFeatureDefinitions, mapBuiltinFeatures, type FeatureRow } from '@/modules/features/catalog'
+import { mapBuiltinFeatures, type FeatureRow } from '@/modules/features/catalog'
 
 const loading = ref(false)
-const features = ref<FeatureRow[]>(builtinFeatureDefinitions)
+const features = ref<FeatureRow[]>([])
+const loadError = ref('')
+const changingID = ref('')
+const activationLabels: Record<string, string> = { 'hot-gated': '即时生效', restart: '需重启', 'always-on': '始终开启' }
 const configVisible = ref(false)
 const configLoading = ref(false)
 const configSaving = ref(false)
@@ -134,25 +143,31 @@ const listItems = (payload: any) => unwrap(payload)?.items || []
 
 const load = async () => {
   loading.value = true
+  loadError.value = ''
   try {
     const items = listItems(await featureApi.list())
     features.value = mapBuiltinFeatures(items)
   } catch (error: any) {
-    ElMessage.error(error?.msg || '加载内置功能失败')
+    loadError.value = error?.msg || '加载内置功能失败，请点击刷新重试'
+    ElMessage.error(loadError.value)
   } finally {
     loading.value = false
   }
 }
 
 const toggle = async (row: FeatureRow, enabled: boolean) => {
+  if (loading.value || loadError.value || changingID.value || !row.state) return
+  changingID.value = row.id
   try {
     const payload = unwrap(enabled
       ? await featureApi.enable(row.id)
       : await featureApi.disable(row.id))
-    ElMessage.success(payload?.message || '目标状态已保存')
+    ElMessage.success(payload?.state?.pending_restart ? '目标状态已保存，重启 API 后生效' : enabled ? '功能已启用' : '功能已停用')
     await load()
   } catch (error: any) {
     ElMessage.error(error?.msg || '更新内置功能状态失败')
+  } finally {
+    changingID.value = ''
   }
 }
 

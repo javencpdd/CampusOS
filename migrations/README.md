@@ -1,6 +1,6 @@
 # CampusOS 数据库迁移
 
-> 当前结构：v1.1 冻结基线与前向修订，加上 v1.2 授权审计、插件版本/配置、身份委托、独立管理身份域与帖子事实版本修订及v5发布身份/安装与Operation与独立元数据事件队列及公开知识来源/请求/索引执行（000001–000035）
+> 当前结构：v1.1 冻结基线与前向修订，加上 v1.2 授权审计、插件版本/配置、身份委托、独立管理身份域与帖子事实版本修订及v5发布身份/安装与Operation与独立元数据事件队列及公开知识来源/请求/索引执行（000001–000036）
 > 更新时间：2026-10-23（Asia/Shanghai）
 > 数据库：PostgreSQL 16+
 > 数据边界：本仓库当前开发数据均为可丢弃测试数据；本次已将旧链重构为单一 clean baseline。
@@ -48,6 +48,7 @@
 | `000033` | `000033_knowledge_index_execution.up.sql` / `.down.sql` | Knowledge执行任务/租约/持久分页断点与当前公开文本分块投影两表；独立来源/规则/Profile修订，周期权威对账与消失目标清理。逻辑引用允许目标缺失；任一表非空拒绝down，空域保留旧120业务表/权限和epoch高水位。 |
 | `000034` | `000034_knowledge_private_index.up.sql` / `.down.sql` | 本人逐项同意/精确原来源及每选择AEAD密文、独立元数据任务两表；外置密钥不入备份，撤回先持久退役和删钥。非空拒绝down，空域保留非复用consent/lease序列高水位。 |
 | `000035` | `000035_ai_managed_gateway.up.sql` / `.down.sql` | 六表受管模型/Profile Secret/Binding/预算/执行/事件，必需审计与独立Admin/MFA；非空拒绝down，保留非复用版本序列。 |
+| `000036` | `000036_runtime_config_permissions.up.sql` / `.down.sql` | 独立Admin运行配置读取/管理权限，仅默认授予security_admin，不存配置值；非种子授权拒绝down，保留配置文件。 |
 
 | `000028` | `000028_plugin_v5_event_deliveries.up.sql` / `.down.sql` | 独立元数据事件队列；唯一来源/实例/代次，租约、有限重试与死信；非空拒绝down，不改旧表或序列。 |
 
@@ -135,7 +136,7 @@ ER 工具从当前前向迁移链的 UP 文件生成 [PNG、SVG 与中文实体�
 
 ## 5. 后续规范
 
-这次整体重构是“可丢弃测试数据”的一次性例外。自本基线被团队共享或进入任何不可丢弃环境后，`000001` 必须视为不可变。当前最高版本为 `000035`，下一项结构变更从 `000036_<业务名>.up.sql` 与对应 `.down.sql` 开始追加，并同时完成：
+这次整体重构是“可丢弃测试数据”的一次性例外。自本基线被团队共享或进入任何不可丢弃环境后，`000001` 必须视为不可变。当前最高版本为 `000036`，下一项结构变更从 `000037_<业务名>.up.sql` 与对应 `.down.sql` 开始追加，并同时完成：
 
 1. 说明表归属、外键、索引、状态约束、数据修复和回滚损失；
 2. 更新 `scripts/schema-contract.sql`、Admin `/architecture`、ER、架构与操作文档；
@@ -209,3 +210,8 @@ python3 skills/sources/campusos-data-architecture-sync/scripts/check_architectur
 更新时间：2026-10-23（Asia/Shanghai）。当前35/next36，130业务/系统受管+2执行器表、143FK。新增六表仅保存部署模型元数据、AEAD凭据密文、chat绑定、请求单位预算与执行事件，不保存Prompt或答案。主密钥AI_ENCRYPTION_KEYS由部署单独托管，不入应用备份。恢复隔离停用Profile、推进绑定版本并到期未决租约；仅结算已分发的未知请求，不重放，不清零预算。
 
 有任何AI数据或非播种权限引用，down原子拒绝；空域down/up保留ai_gateway_epoch_seq高水位，历史1–34不改写。
+
+
+## 受管运行配置权限（000036）
+
+2026-10-30：只向permission_definitions增加runtime_config读取/管理权限，默认授予独立Admin的security_admin，不新增表、FK或配置明文；current36/next37、130业务/系统受管+2执行器、143FK。非种子授权引用时down拒绝，空种子域down/up不影响账号、业务记录、部署文件及其.bak。Linux隔离PostgreSQL16执行up/down/up及非种子引用拒绝演练通过。

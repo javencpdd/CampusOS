@@ -10,7 +10,9 @@ const apiProxyTarget =
 export default defineConfig({
   plugins: [
     vue(),
-    Components({ resolvers: [ElementPlusResolver()], dts: false }),
+    // main.ts loads the full stylesheet; avoid late style-module optimization
+    // and full-page reloads as lazy views are discovered.
+    Components({ resolvers: [ElementPlusResolver({ importStyle: false })], dts: false }),
   ],
   resolve: {
     alias: {

@@ -1,0 +1,4381 @@
+{
+  "version": 1,
+  "fingerprint": "2a35bf1b988b4d2943cd429177d809954bca9c1f43fa9e459a549802dce24027",
+  "tables": {
+    "academic_terms": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "year",
+        "semester",
+        "first_week_start",
+        "status",
+        "is_default",
+        "version",
+        "created_by",
+        "updated_by",
+        "created_at",
+        "updated_at",
+        "closed_at"
+      ],
+      "multivalued": [],
+      "foreignKeys": [
+        {
+          "name": "academic_terms_created_by_fkey",
+          "columns": [
+            "created_by"
+          ],
+          "parent": "users",
+          "parentColumns": [
+            "id"
+          ],
+          "required": false,
+          "unique": false
+        },
+        {
+          "name": "academic_terms_updated_by_fkey",
+          "columns": [
+            "updated_by"
+          ],
+          "parent": "users",
+          "parentColumns": [
+            "id"
+          ],
+          "required": false,
+          "unique": false
+        }
+      ]
+    },
+    "accounts": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "user_id",
+        "type",
+        "identifier",
+        "credential",
+        "verified",
+        "created_at",
+        "updated_at",
+        "deleted_at",
+        "identifier_normalized",
+        "verification_state",
+        "verified_at",
+        "verification_source",
+        "password_changed_at",
+        "credential_version"
+      ],
+      "multivalued": [],
+      "foreignKeys": [
+        {
+          "name": "fk_accounts_user",
+          "columns": [
+            "user_id"
+          ],
+          "parent": "users",
+          "parentColumns": [
+            "id"
+          ],
+          "required": true,
+          "unique": false
+        }
+      ]
+    },
+    "admin_accounts": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "username",
+        "email",
+        "display_name",
+        "status",
+        "status_reason",
+        "status_changed_by",
+        "status_changed_at",
+        "version",
+        "created_at",
+        "updated_at",
+        "revoked_at"
+      ],
+      "multivalued": [],
+      "foreignKeys": []
+    },
+    "admin_credentials": {
+      "primaryKey": [
+        "account_id"
+      ],
+      "columns": [
+        "account_id",
+        "credential_hash",
+        "credential_version",
+        "password_changed_at",
+        "created_at",
+        "updated_at"
+      ],
+      "multivalued": [],
+      "foreignKeys": [
+        {
+          "name": "admin_credentials_account_id_fkey",
+          "columns": [
+            "account_id"
+          ],
+          "parent": "admin_accounts",
+          "parentColumns": [
+            "id"
+          ],
+          "required": true,
+          "unique": true
+        }
+      ]
+    },
+    "admin_mfa_tickets": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "account_id",
+        "audience",
+        "purpose",
+        "ticket_digest",
+        "expires_at",
+        "consumed_at",
+        "attempts",
+        "max_attempts",
+        "created_at",
+        "updated_at"
+      ],
+      "multivalued": [],
+      "foreignKeys": [
+        {
+          "name": "admin_mfa_tickets_account_id_fkey",
+          "columns": [
+            "account_id"
+          ],
+          "parent": "admin_accounts",
+          "parentColumns": [
+            "id"
+          ],
+          "required": true,
+          "unique": false
+        }
+      ]
+    },
+    "admin_mfa_totp": {
+      "primaryKey": [
+        "account_id"
+      ],
+      "columns": [
+        "account_id",
+        "status",
+        "key_id",
+        "nonce",
+        "ciphertext",
+        "last_accepted_step",
+        "enrollment_expires_at",
+        "confirmed_at",
+        "disabled_at",
+        "version",
+        "created_at",
+        "updated_at"
+      ],
+      "multivalued": [],
+      "foreignKeys": [
+        {
+          "name": "admin_mfa_totp_account_id_fkey",
+          "columns": [
+            "account_id"
+          ],
+          "parent": "admin_accounts",
+          "parentColumns": [
+            "id"
+          ],
+          "required": true,
+          "unique": true
+        }
+      ]
+    },
+    "admin_recovery_tickets": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "account_id",
+        "purpose",
+        "ticket_digest",
+        "expires_at",
+        "consumed_at",
+        "attempts",
+        "max_attempts",
+        "created_at",
+        "updated_at"
+      ],
+      "multivalued": [],
+      "foreignKeys": [
+        {
+          "name": "admin_recovery_tickets_account_id_fkey",
+          "columns": [
+            "account_id"
+          ],
+          "parent": "admin_accounts",
+          "parentColumns": [
+            "id"
+          ],
+          "required": true,
+          "unique": false
+        }
+      ]
+    },
+    "admin_role_bindings": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "account_id",
+        "role_id",
+        "granted_by",
+        "status",
+        "version",
+        "created_at",
+        "revoked_at"
+      ],
+      "multivalued": [],
+      "foreignKeys": [
+        {
+          "name": "admin_role_bindings_account_id_fkey",
+          "columns": [
+            "account_id"
+          ],
+          "parent": "admin_accounts",
+          "parentColumns": [
+            "id"
+          ],
+          "required": true,
+          "unique": false
+        },
+        {
+          "name": "admin_role_bindings_role_id_fkey",
+          "columns": [
+            "role_id"
+          ],
+          "parent": "admin_roles",
+          "parentColumns": [
+            "id"
+          ],
+          "required": true,
+          "unique": false
+        }
+      ]
+    },
+    "admin_role_permissions": {
+      "primaryKey": [
+        "role_id",
+        "permission_code"
+      ],
+      "columns": [
+        "role_id",
+        "permission_code",
+        "created_by",
+        "created_at",
+        "facts_version"
+      ],
+      "multivalued": [],
+      "foreignKeys": [
+        {
+          "name": "admin_role_permissions_role_id_fkey",
+          "columns": [
+            "role_id"
+          ],
+          "parent": "admin_roles",
+          "parentColumns": [
+            "id"
+          ],
+          "required": true,
+          "unique": false
+        }
+      ]
+    },
+    "admin_roles": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "name",
+        "description",
+        "is_system",
+        "created_at"
+      ],
+      "multivalued": [],
+      "foreignKeys": []
+    },
+    "admin_sessions": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "account_id",
+        "refresh_token_digest",
+        "token_family_id",
+        "rotated_from_id",
+        "rotated_to_id",
+        "device_name",
+        "user_agent",
+        "ip_hash",
+        "authentication_strength",
+        "mfa_authenticated_at",
+        "last_active_at",
+        "expires_at",
+        "created_at",
+        "updated_at",
+        "revoked_at",
+        "revoke_reason",
+        "version"
+      ],
+      "multivalued": [],
+      "foreignKeys": [
+        {
+          "name": "admin_sessions_account_id_fkey",
+          "columns": [
+            "account_id"
+          ],
+          "parent": "admin_accounts",
+          "parentColumns": [
+            "id"
+          ],
+          "required": true,
+          "unique": false
+        }
+      ]
+    },
+    "ai_call_logs": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "provider",
+        "model",
+        "source",
+        "status",
+        "duration_ms",
+        "prompt_tokens",
+        "completion_tokens",
+        "total_tokens",
+        "error_message",
+        "created_at",
+        "deleted_at"
+      ],
+      "multivalued": [],
+      "foreignKeys": []
+    },
+    "ai_model_bindings": {
+      "primaryKey": [
+        "name"
+      ],
+      "columns": [
+        "name",
+        "profile_id",
+        "revision"
+      ],
+      "multivalued": [],
+      "foreignKeys": [
+        {
+          "name": "ai_model_bindings_profile_id_fkey",
+          "columns": [
+            "profile_id"
+          ],
+          "parent": "ai_model_profiles",
+          "parentColumns": [
+            "id"
+          ],
+          "required": true,
+          "unique": false
+        }
+      ]
+    },
+    "ai_model_budgets": {
+      "primaryKey": [
+        "profile_id"
+      ],
+      "columns": [
+        "profile_id",
+        "quota",
+        "charged",
+        "reserved"
+      ],
+      "multivalued": [],
+      "foreignKeys": [
+        {
+          "name": "ai_model_budgets_profile_id_fkey",
+          "columns": [
+            "profile_id"
+          ],
+          "parent": "ai_model_profiles",
+          "parentColumns": [
+            "id"
+          ],
+          "required": true,
+          "unique": true
+        }
+      ]
+    },
+    "ai_model_profiles": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "revision",
+        "definition",
+        "model",
+        "endpoint",
+        "fingerprint",
+        "secret_ref",
+        "enabled",
+        "timeout_ms",
+        "max_tokens",
+        "max_concurrent"
+      ],
+      "multivalued": [],
+      "foreignKeys": []
+    },
+    "ai_model_run_events": {
+      "primaryKey": [
+        "run_id",
+        "ordinal"
+      ],
+      "columns": [
+        "run_id",
+        "ordinal",
+        "kind"
+      ],
+      "multivalued": [],
+      "foreignKeys": [
+        {
+          "name": "ai_model_run_events_run_id_fkey",
+          "columns": [
+            "run_id"
+          ],
+          "parent": "ai_model_runs",
+          "parentColumns": [
+            "id"
+          ],
+          "required": true,
+          "unique": false
+        }
+      ]
+    },
+    "ai_model_runs": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "owner_id",
+        "profile_id",
+        "profile_revision",
+        "binding_revision",
+        "instance_id",
+        "state",
+        "lease_until_ms",
+        "charged_units",
+        "usage_known",
+        "prompt_tokens",
+        "completion_tokens",
+        "total_tokens",
+        "created_at",
+        "error_code"
+      ],
+      "multivalued": [],
+      "foreignKeys": [
+        {
+          "name": "ai_model_runs_profile_id_fkey",
+          "columns": [
+            "profile_id"
+          ],
+          "parent": "ai_model_profiles",
+          "parentColumns": [
+            "id"
+          ],
+          "required": true,
+          "unique": false
+        }
+      ]
+    },
+    "ai_model_secrets": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "profile_id",
+        "key_id",
+        "nonce",
+        "ciphertext",
+        "endpoint",
+        "purpose"
+      ],
+      "multivalued": [],
+      "foreignKeys": [
+        {
+          "name": "ai_model_secrets_profile_id_fkey",
+          "columns": [
+            "profile_id"
+          ],
+          "parent": "ai_model_profiles",
+          "parentColumns": [
+            "id"
+          ],
+          "required": true,
+          "unique": false
+        }
+      ]
+    },
+    "api_keys": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "key",
+        "name",
+        "user_id",
+        "plugin_name",
+        "permissions",
+        "is_active",
+        "last_used_at",
+        "expires_at",
+        "created_at",
+        "deleted_at"
+      ],
+      "multivalued": [],
+      "foreignKeys": []
+    },
+    "asset_lifecycle_audits": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "asset_id",
+        "actor_user_id",
+        "actor_type",
+        "action",
+        "reason",
+        "created_at",
+        "actor_kind",
+        "actor_ref_id"
+      ],
+      "multivalued": [],
+      "foreignKeys": [
+        {
+          "name": "fk_asset_lifecycle_audits_asset",
+          "columns": [
+            "asset_id"
+          ],
+          "parent": "user_assets",
+          "parentColumns": [
+            "id"
+          ],
+          "required": false,
+          "unique": false
+        },
+        {
+          "name": "fk_asset_lifecycle_audits_actor",
+          "columns": [
+            "actor_user_id"
+          ],
+          "parent": "users",
+          "parentColumns": [
+            "id"
+          ],
+          "required": false,
+          "unique": false
+        }
+      ]
+    },
+    "audit_logs": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "trace_id",
+        "actor_id",
+        "actor_type",
+        "action",
+        "resource",
+        "resource_id",
+        "before_data",
+        "after_data",
+        "metadata",
+        "ip_address",
+        "created_at"
+      ],
+      "multivalued": [],
+      "foreignKeys": []
+    },
+    "authorization_audits": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "request_id",
+        "actor_id",
+        "permission_code",
+        "operation_code",
+        "scope_type",
+        "scope_id",
+        "resource_type",
+        "resource_id",
+        "outcome",
+        "reason",
+        "ip_address",
+        "created_at",
+        "command_id",
+        "trace_id",
+        "resource_version",
+        "actor_kind"
+      ],
+      "multivalued": [],
+      "foreignKeys": []
+    },
+    "builtin_feature_states": {
+      "primaryKey": [
+        "feature_id"
+      ],
+      "columns": [
+        "feature_id",
+        "desired_enabled",
+        "effective_enabled",
+        "pending_restart",
+        "updated_at",
+        "config"
+      ],
+      "multivalued": [],
+      "foreignKeys": []
+    },
+    "categories": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "name",
+        "slug",
+        "description",
+        "icon",
+        "parent_id",
+        "sort_order",
+        "thread_count",
+        "post_count",
+        "is_closed",
+        "created_at",
+        "updated_at",
+        "deleted_at",
+        "default_tags",
+        "node_kind",
+        "lifecycle_status",
+        "version",
+        "color"
+      ],
+      "multivalued": [
+        "default_tags"
+      ],
+      "foreignKeys": [
+        {
+          "name": "fk_categories_parent",
+          "columns": [
+            "parent_id"
+          ],
+          "parent": "categories",
+          "parentColumns": [
+            "id"
+          ],
+          "required": false,
+          "unique": false
+        }
+      ]
+    },
+    "category_thread_type_policies": {
+      "primaryKey": [
+        "category_id",
+        "thread_type"
+      ],
+      "columns": [
+        "category_id",
+        "thread_type",
+        "enabled",
+        "created_at",
+        "updated_at"
+      ],
+      "multivalued": [],
+      "foreignKeys": [
+        {
+          "name": "fk_category_thread_type_policy_category",
+          "columns": [
+            "category_id"
+          ],
+          "parent": "categories",
+          "parentColumns": [
+            "id"
+          ],
+          "required": true,
+          "unique": false
+        }
+      ]
+    },
+    "configurations": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "key",
+        "value",
+        "type",
+        "description",
+        "category",
+        "is_secret",
+        "updated_by",
+        "created_at",
+        "updated_at",
+        "deleted_at"
+      ],
+      "multivalued": [],
+      "foreignKeys": [
+        {
+          "name": "fk_configurations_updated_by",
+          "columns": [
+            "updated_by"
+          ],
+          "parent": "users",
+          "parentColumns": [
+            "id"
+          ],
+          "required": true,
+          "unique": false
+        }
+      ]
+    },
+    "content_moderation_actions": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "case_id",
+        "thread_id",
+        "action",
+        "reason",
+        "actor_id",
+        "before_state",
+        "after_state",
+        "created_at",
+        "actor_kind",
+        "actor_ref_id"
+      ],
+      "multivalued": [],
+      "foreignKeys": []
+    },
+    "content_moderation_cases": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "thread_id",
+        "status",
+        "reason",
+        "opened_by",
+        "resolved_by",
+        "opened_at",
+        "resolved_at",
+        "opened_actor_kind",
+        "opened_actor_id",
+        "resolved_actor_kind",
+        "resolved_actor_id"
+      ],
+      "multivalued": [],
+      "foreignKeys": []
+    },
+    "content_revisions": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "thread_id",
+        "version",
+        "title",
+        "content",
+        "content_format",
+        "tags",
+        "action",
+        "reason",
+        "created_by",
+        "created_at",
+        "created_actor_kind",
+        "created_actor_id"
+      ],
+      "multivalued": [
+        "tags"
+      ],
+      "foreignKeys": []
+    },
+    "identity_account_recovery_cases": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "public_id",
+        "user_id",
+        "account_id",
+        "target_email_normalized",
+        "challenge_id",
+        "created_by",
+        "proof_reference",
+        "status",
+        "expires_at",
+        "completed_at",
+        "cancelled_at",
+        "created_at",
+        "updated_at"
+      ],
+      "multivalued": [],
+      "foreignKeys": [
+        {
+          "name": "fk_identity_recovery_case_account",
+          "columns": [
+            "account_id"
+          ],
+          "parent": "accounts",
+          "parentColumns": [
+            "id"
+          ],
+          "required": true,
+          "unique": false
+        },
+        {
+          "name": "fk_identity_recovery_case_challenge",
+          "columns": [
+            "challenge_id"
+          ],
+          "parent": "identity_email_challenges",
+          "parentColumns": [
+            "id"
+          ],
+          "required": true,
+          "unique": true
+        },
+        {
+          "name": "fk_identity_recovery_case_created_by",
+          "columns": [
+            "created_by"
+          ],
+          "parent": "users",
+          "parentColumns": [
+            "id"
+          ],
+          "required": false,
+          "unique": false
+        },
+        {
+          "name": "fk_identity_recovery_case_user",
+          "columns": [
+            "user_id"
+          ],
+          "parent": "users",
+          "parentColumns": [
+            "id"
+          ],
+          "required": true,
+          "unique": false
+        }
+      ]
+    },
+    "identity_admin_accounts": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "user_id",
+        "credential_account_id",
+        "status",
+        "activation_source",
+        "activated_at",
+        "revoked_at",
+        "last_authenticated_at",
+        "version",
+        "created_at",
+        "updated_at",
+        "status_reason",
+        "status_changed_by",
+        "status_changed_at"
+      ],
+      "multivalued": [],
+      "foreignKeys": [
+        {
+          "name": "fk_identity_admin_account_credential",
+          "columns": [
+            "credential_account_id"
+          ],
+          "parent": "accounts",
+          "parentColumns": [
+            "id"
+          ],
+          "required": true,
+          "unique": true
+        },
+        {
+          "name": "fk_identity_admin_account_status_changed_by",
+          "columns": [
+            "status_changed_by"
+          ],
+          "parent": "users",
+          "parentColumns": [
+            "id"
+          ],
+          "required": false,
+          "unique": false
+        },
+        {
+          "name": "fk_identity_admin_account_user",
+          "columns": [
+            "user_id"
+          ],
+          "parent": "users",
+          "parentColumns": [
+            "id"
+          ],
+          "required": true,
+          "unique": true
+        }
+      ]
+    },
+    "identity_challenge_policies": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "email_window_minutes",
+        "email_max_requests",
+        "ip_window_minutes",
+        "ip_max_requests",
+        "version",
+        "updated_by",
+        "updated_at"
+      ],
+      "multivalued": [],
+      "foreignKeys": [
+        {
+          "name": "fk_identity_challenge_policy_updated_by",
+          "columns": [
+            "updated_by"
+          ],
+          "parent": "users",
+          "parentColumns": [
+            "id"
+          ],
+          "required": false,
+          "unique": false
+        }
+      ]
+    },
+    "identity_challenge_rate_limits": {
+      "primaryKey": [
+        "scope",
+        "subject_digest",
+        "window_started_at"
+      ],
+      "columns": [
+        "scope",
+        "subject_digest",
+        "window_started_at",
+        "request_count",
+        "updated_at"
+      ],
+      "multivalued": [],
+      "foreignKeys": []
+    },
+    "identity_delegations": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "kind",
+        "subject_kind",
+        "subject_id",
+        "action",
+        "board_id",
+        "not_before",
+        "expires_at",
+        "required_strength",
+        "delegable",
+        "status",
+        "version",
+        "created_by",
+        "created_at",
+        "updated_at",
+        "revoked_at"
+      ],
+      "multivalued": [],
+      "foreignKeys": []
+    },
+    "identity_email_challenges": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "public_id",
+        "purpose",
+        "email_normalized",
+        "account_id",
+        "key_id",
+        "nonce",
+        "expires_at",
+        "attempt_count",
+        "max_attempts",
+        "verified_at",
+        "ticket_digest",
+        "ticket_expires_at",
+        "consumed_at",
+        "invalidated_at",
+        "requested_ip_hash",
+        "created_at",
+        "updated_at"
+      ],
+      "multivalued": [],
+      "foreignKeys": [
+        {
+          "name": "fk_identity_email_challenge_account",
+          "columns": [
+            "account_id"
+          ],
+          "parent": "accounts",
+          "parentColumns": [
+            "id"
+          ],
+          "required": false,
+          "unique": false
+        }
+      ]
+    },
+    "identity_legacy_email_placeholders": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "user_id",
+        "placeholder_email",
+        "migration_source",
+        "resolved_at",
+        "created_at",
+        "updated_at"
+      ],
+      "multivalued": [],
+      "foreignKeys": [
+        {
+          "name": "fk_identity_legacy_placeholder_user",
+          "columns": [
+            "user_id"
+          ],
+          "parent": "users",
+          "parentColumns": [
+            "id"
+          ],
+          "required": true,
+          "unique": false
+        }
+      ]
+    },
+    "identity_mfa_policies": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "mode",
+        "grace_ends_at",
+        "version",
+        "updated_by",
+        "updated_at"
+      ],
+      "multivalued": [],
+      "foreignKeys": [
+        {
+          "name": "fk_identity_mfa_policy_updated_by",
+          "columns": [
+            "updated_by"
+          ],
+          "parent": "users",
+          "parentColumns": [
+            "id"
+          ],
+          "required": false,
+          "unique": false
+        }
+      ]
+    },
+    "identity_mfa_recovery_codes": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "user_id",
+        "method_id",
+        "code_digest",
+        "used_at",
+        "created_at"
+      ],
+      "multivalued": [],
+      "foreignKeys": [
+        {
+          "name": "fk_identity_mfa_recovery_method",
+          "columns": [
+            "method_id"
+          ],
+          "parent": "identity_mfa_totp_methods",
+          "parentColumns": [
+            "id"
+          ],
+          "required": true,
+          "unique": false
+        },
+        {
+          "name": "fk_identity_mfa_recovery_user",
+          "columns": [
+            "user_id"
+          ],
+          "parent": "users",
+          "parentColumns": [
+            "id"
+          ],
+          "required": true,
+          "unique": false
+        }
+      ]
+    },
+    "identity_mfa_tickets": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "user_id",
+        "audience",
+        "purpose",
+        "ticket_digest",
+        "expires_at",
+        "consumed_at",
+        "attempts",
+        "max_attempts",
+        "created_at",
+        "updated_at"
+      ],
+      "multivalued": [],
+      "foreignKeys": [
+        {
+          "name": "fk_identity_mfa_ticket_user",
+          "columns": [
+            "user_id"
+          ],
+          "parent": "users",
+          "parentColumns": [
+            "id"
+          ],
+          "required": true,
+          "unique": false
+        }
+      ]
+    },
+    "identity_mfa_totp_methods": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "user_id",
+        "status",
+        "key_id",
+        "nonce",
+        "ciphertext",
+        "last_accepted_step",
+        "enrollment_expires_at",
+        "confirmed_at",
+        "disabled_at",
+        "created_at",
+        "updated_at"
+      ],
+      "multivalued": [],
+      "foreignKeys": [
+        {
+          "name": "fk_identity_mfa_totp_user",
+          "columns": [
+            "user_id"
+          ],
+          "parent": "users",
+          "parentColumns": [
+            "id"
+          ],
+          "required": true,
+          "unique": false
+        }
+      ]
+    },
+    "identity_reserved_identifiers": {
+      "primaryKey": [
+        "identifier_type",
+        "identifier_normalized"
+      ],
+      "columns": [
+        "identifier_type",
+        "identifier_normalized",
+        "reason",
+        "created_at"
+      ],
+      "multivalued": [],
+      "foreignKeys": []
+    },
+    "instance_recovery_epochs": {
+      "primaryKey": [
+        "singleton"
+      ],
+      "columns": [
+        "singleton",
+        "epoch",
+        "archive_sha256",
+        "phase",
+        "inventory_sha256",
+        "reviewed_by",
+        "review_reason",
+        "rotated_at",
+        "reviewed_at",
+        "egress_paused",
+        "audit"
+      ],
+      "multivalued": [],
+      "foreignKeys": []
+    },
+    "integration_credentials": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "principal_id",
+        "prefix",
+        "digest",
+        "purpose",
+        "status",
+        "rules",
+        "not_before_ms",
+        "expires_at_ms",
+        "facts_version",
+        "created_by_admin_id",
+        "created_at",
+        "updated_at"
+      ],
+      "multivalued": [],
+      "foreignKeys": [
+        {
+          "name": "integration_credentials_principal_id_fkey",
+          "columns": [
+            "principal_id"
+          ],
+          "parent": "integration_principals",
+          "parentColumns": [
+            "id"
+          ],
+          "required": true,
+          "unique": false
+        }
+      ]
+    },
+    "integration_principals": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "name",
+        "status",
+        "facts_version",
+        "created_by_admin_id",
+        "created_at",
+        "updated_at"
+      ],
+      "multivalued": [],
+      "foreignKeys": []
+    },
+    "knowledge_collection_sources": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "data",
+        "facts_version",
+        "collection_id",
+        "selection_id"
+      ],
+      "multivalued": [],
+      "foreignKeys": [
+        {
+          "name": "knowledge_collection_sources_collection_id_fkey",
+          "columns": [
+            "collection_id"
+          ],
+          "parent": "knowledge_collections",
+          "parentColumns": [
+            "id"
+          ],
+          "required": true,
+          "unique": false
+        },
+        {
+          "name": "fk_knowledge_collection_sources_2",
+          "columns": [
+            "selection_id",
+            "collection_id"
+          ],
+          "parent": "knowledge_source_selections",
+          "parentColumns": [
+            "id",
+            "collection_id"
+          ],
+          "required": true,
+          "unique": false
+        }
+      ]
+    },
+    "knowledge_collections": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "data",
+        "facts_version"
+      ],
+      "multivalued": [],
+      "foreignKeys": []
+    },
+    "knowledge_index_backfill_checkpoints": {
+      "primaryKey": [
+        "target_kind"
+      ],
+      "columns": [
+        "target_kind",
+        "after_id",
+        "completed_passes",
+        "next_scan_at",
+        "updated_at"
+      ],
+      "multivalued": [],
+      "foreignKeys": []
+    },
+    "knowledge_index_documents": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "data",
+        "facts_version",
+        "collection_id",
+        "selection_id",
+        "generation"
+      ],
+      "multivalued": [],
+      "foreignKeys": []
+    },
+    "knowledge_index_jobs": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "data",
+        "facts_version",
+        "state",
+        "available_at_ms",
+        "lease_until_ms",
+        "lease_token"
+      ],
+      "multivalued": [],
+      "foreignKeys": []
+    },
+    "knowledge_index_tasks": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "target_kind",
+        "target_id",
+        "target_version",
+        "status",
+        "created_at"
+      ],
+      "multivalued": [],
+      "foreignKeys": []
+    },
+    "knowledge_official_revisions": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "data",
+        "facts_version",
+        "source_id"
+      ],
+      "multivalued": [],
+      "foreignKeys": [
+        {
+          "name": "knowledge_official_revisions_source_id_fkey",
+          "columns": [
+            "source_id"
+          ],
+          "parent": "knowledge_official_sources",
+          "parentColumns": [
+            "id"
+          ],
+          "required": true,
+          "unique": false
+        }
+      ]
+    },
+    "knowledge_official_sources": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "data",
+        "facts_version"
+      ],
+      "multivalued": [],
+      "foreignKeys": []
+    },
+    "knowledge_private_sources": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "owner_user_id",
+        "kind",
+        "source_id",
+        "revision",
+        "format",
+        "consent_version",
+        "state",
+        "nonce",
+        "ciphertext",
+        "created_at"
+      ],
+      "multivalued": [],
+      "foreignKeys": [
+        {
+          "name": "knowledge_private_sources_owner_user_id_fkey",
+          "columns": [
+            "owner_user_id"
+          ],
+          "parent": "users",
+          "parentColumns": [
+            "id"
+          ],
+          "required": true,
+          "unique": false
+        }
+      ]
+    },
+    "knowledge_private_tasks": {
+      "primaryKey": [
+        "source_id"
+      ],
+      "columns": [
+        "source_id",
+        "consent_version",
+        "state",
+        "attempts",
+        "lease_token",
+        "lease_until_ms",
+        "available_at_ms",
+        "error_code"
+      ],
+      "multivalued": [],
+      "foreignKeys": [
+        {
+          "name": "knowledge_private_tasks_source_id_fkey",
+          "columns": [
+            "source_id"
+          ],
+          "parent": "knowledge_private_sources",
+          "parentColumns": [
+            "id"
+          ],
+          "required": true,
+          "unique": true
+        }
+      ]
+    },
+    "knowledge_source_selections": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "data",
+        "facts_version",
+        "collection_id"
+      ],
+      "multivalued": [],
+      "foreignKeys": [
+        {
+          "name": "knowledge_source_selections_collection_id_fkey",
+          "columns": [
+            "collection_id"
+          ],
+          "parent": "knowledge_collections",
+          "parentColumns": [
+            "id"
+          ],
+          "required": true,
+          "unique": false
+        }
+      ]
+    },
+    "likes": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "user_id",
+        "target_type",
+        "target_id",
+        "created_at",
+        "updated_at",
+        "deleted_at"
+      ],
+      "multivalued": [],
+      "foreignKeys": [
+        {
+          "name": "fk_likes_user",
+          "columns": [
+            "user_id"
+          ],
+          "parent": "users",
+          "parentColumns": [
+            "id"
+          ],
+          "required": true,
+          "unique": false
+        }
+      ]
+    },
+    "mcp_audit_logs": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "user_id",
+        "tool",
+        "arguments",
+        "success",
+        "error",
+        "created_at"
+      ],
+      "multivalued": [],
+      "foreignKeys": []
+    },
+    "message_bindings": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "user_id",
+        "platform",
+        "external_user_id",
+        "display_name",
+        "created_at",
+        "updated_at",
+        "deleted_at"
+      ],
+      "multivalued": [],
+      "foreignKeys": []
+    },
+    "message_logs": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "platform",
+        "conversation_id",
+        "sender_id",
+        "direction",
+        "message_type",
+        "content",
+        "raw_payload",
+        "created_at"
+      ],
+      "multivalued": [],
+      "foreignKeys": []
+    },
+    "mutual_aid_details": {
+      "primaryKey": [
+        "thread_id"
+      ],
+      "columns": [
+        "thread_id",
+        "aid_type",
+        "aid_status",
+        "deadline",
+        "location_scope",
+        "contact_mode",
+        "version",
+        "created_by",
+        "created_at",
+        "updated_at"
+      ],
+      "multivalued": [],
+      "foreignKeys": [
+        {
+          "name": "fk_mutual_aid_details_created_by",
+          "columns": [
+            "created_by"
+          ],
+          "parent": "users",
+          "parentColumns": [
+            "id"
+          ],
+          "required": true,
+          "unique": false
+        },
+        {
+          "name": "fk_mutual_aid_details_thread",
+          "columns": [
+            "thread_id"
+          ],
+          "parent": "threads",
+          "parentColumns": [
+            "id"
+          ],
+          "required": true,
+          "unique": true
+        }
+      ]
+    },
+    "notifications": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "user_id",
+        "type",
+        "title",
+        "content",
+        "action_url",
+        "is_read",
+        "read_at",
+        "metadata",
+        "created_at",
+        "updated_at",
+        "deleted_at"
+      ],
+      "multivalued": [],
+      "foreignKeys": [
+        {
+          "name": "fk_notifications_user",
+          "columns": [
+            "user_id"
+          ],
+          "parent": "users",
+          "parentColumns": [
+            "id"
+          ],
+          "required": true,
+          "unique": false
+        }
+      ]
+    },
+    "outbox_consumer_receipts": {
+      "primaryKey": [
+        "consumer_name",
+        "event_id"
+      ],
+      "columns": [
+        "consumer_name",
+        "event_id",
+        "attempt",
+        "delivered_at"
+      ],
+      "multivalued": [],
+      "foreignKeys": [
+        {
+          "name": "fk_outbox_consumer_receipt_event",
+          "columns": [
+            "event_id"
+          ],
+          "parent": "platform_outbox",
+          "parentColumns": [
+            "id"
+          ],
+          "required": true,
+          "unique": false
+        }
+      ]
+    },
+    "permission_definitions": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "code",
+        "domain",
+        "resource",
+        "action",
+        "description",
+        "risk_level",
+        "allowed_scope_types",
+        "audit_level",
+        "deprecated_at",
+        "created_at",
+        "updated_at",
+        "facts_version"
+      ],
+      "multivalued": [],
+      "foreignKeys": []
+    },
+    "personal_document_previews": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "document_version_id",
+        "preview_object_id",
+        "status",
+        "error_code",
+        "attempts",
+        "created_at",
+        "updated_at"
+      ],
+      "multivalued": [],
+      "foreignKeys": [
+        {
+          "name": "personal_document_previews_document_version_id_fkey",
+          "columns": [
+            "document_version_id"
+          ],
+          "parent": "personal_document_versions",
+          "parentColumns": [
+            "id"
+          ],
+          "required": true,
+          "unique": true
+        },
+        {
+          "name": "personal_document_previews_preview_object_id_fkey",
+          "columns": [
+            "preview_object_id"
+          ],
+          "parent": "storage_objects",
+          "parentColumns": [
+            "id"
+          ],
+          "required": false,
+          "unique": false
+        }
+      ]
+    },
+    "personal_document_versions": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "document_id",
+        "version_number",
+        "source_object_id",
+        "source_type",
+        "size_bytes",
+        "sha256",
+        "restored_from_version_id",
+        "created_by",
+        "created_at"
+      ],
+      "multivalued": [],
+      "foreignKeys": [
+        {
+          "name": "personal_document_versions_created_by_fkey",
+          "columns": [
+            "created_by"
+          ],
+          "parent": "users",
+          "parentColumns": [
+            "id"
+          ],
+          "required": true,
+          "unique": false
+        },
+        {
+          "name": "personal_document_versions_document_id_fkey",
+          "columns": [
+            "document_id"
+          ],
+          "parent": "personal_documents",
+          "parentColumns": [
+            "id"
+          ],
+          "required": true,
+          "unique": false
+        },
+        {
+          "name": "personal_document_versions_restored_from_version_id_fkey",
+          "columns": [
+            "restored_from_version_id"
+          ],
+          "parent": "personal_document_versions",
+          "parentColumns": [
+            "id"
+          ],
+          "required": false,
+          "unique": false
+        },
+        {
+          "name": "personal_document_versions_source_object_id_fkey",
+          "columns": [
+            "source_object_id"
+          ],
+          "parent": "storage_objects",
+          "parentColumns": [
+            "id"
+          ],
+          "required": true,
+          "unique": false
+        }
+      ]
+    },
+    "personal_documents": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "owner_user_id",
+        "name",
+        "document_type",
+        "status",
+        "current_version_id",
+        "version",
+        "created_at",
+        "updated_at",
+        "deleted_at"
+      ],
+      "multivalued": [],
+      "foreignKeys": [
+        {
+          "name": "fk_personal_documents_current_version",
+          "columns": [
+            "current_version_id"
+          ],
+          "parent": "personal_document_versions",
+          "parentColumns": [
+            "id"
+          ],
+          "required": false,
+          "unique": false
+        },
+        {
+          "name": "personal_documents_owner_user_id_fkey",
+          "columns": [
+            "owner_user_id"
+          ],
+          "parent": "users",
+          "parentColumns": [
+            "id"
+          ],
+          "required": true,
+          "unique": false
+        }
+      ]
+    },
+    "platform_command_audits": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "command_id",
+        "command_code",
+        "actor_id",
+        "actor_type",
+        "resource_type",
+        "resource_id",
+        "operation_code",
+        "permission_code",
+        "request_id",
+        "trace_id",
+        "event_id",
+        "details",
+        "created_at"
+      ],
+      "multivalued": [],
+      "foreignKeys": [
+        {
+          "name": "fk_platform_command_audit_event",
+          "columns": [
+            "event_id"
+          ],
+          "parent": "platform_outbox",
+          "parentColumns": [
+            "id"
+          ],
+          "required": false,
+          "unique": false
+        }
+      ]
+    },
+    "platform_compatibility_usage": {
+      "primaryKey": [
+        "usage_key"
+      ],
+      "columns": [
+        "usage_key",
+        "usage_kind",
+        "detail",
+        "first_seen",
+        "last_seen",
+        "usage_count"
+      ],
+      "multivalued": [],
+      "foreignKeys": []
+    },
+    "platform_operation_runs": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "kind",
+        "subject_type",
+        "subject_id",
+        "status",
+        "actor_id",
+        "idempotency_key",
+        "details",
+        "error_message",
+        "created_at",
+        "updated_at"
+      ],
+      "multivalued": [],
+      "foreignKeys": []
+    },
+    "platform_outbox": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "event_type",
+        "schema_version",
+        "aggregate_type",
+        "aggregate_id",
+        "payload",
+        "headers",
+        "status",
+        "idempotency_key",
+        "attempts",
+        "max_attempts",
+        "available_at",
+        "lease_owner",
+        "lease_until",
+        "lease_generation",
+        "last_error",
+        "dead_lettered_at",
+        "created_at",
+        "updated_at"
+      ],
+      "multivalued": [],
+      "foreignKeys": []
+    },
+    "platform_outbox_attempts": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "event_id",
+        "consumer_name",
+        "worker_id",
+        "lease_generation",
+        "attempt",
+        "status",
+        "error_message",
+        "started_at",
+        "finished_at"
+      ],
+      "multivalued": [],
+      "foreignKeys": [
+        {
+          "name": "fk_platform_outbox_attempt_event",
+          "columns": [
+            "event_id"
+          ],
+          "parent": "platform_outbox",
+          "parentColumns": [
+            "id"
+          ],
+          "required": true,
+          "unique": false
+        }
+      ]
+    },
+    "platform_retention_runs": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "target",
+        "before_at",
+        "eligible_rows",
+        "mode",
+        "status",
+        "created_at"
+      ],
+      "multivalued": [],
+      "foreignKeys": []
+    },
+    "platform_worker_leases": {
+      "primaryKey": [
+        "worker_id"
+      ],
+      "columns": [
+        "worker_id",
+        "last_heartbeat_at",
+        "updated_at"
+      ],
+      "multivalued": [],
+      "foreignKeys": []
+    },
+    "plugin_admin_grants": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "plugin_version_id",
+        "capability_code",
+        "status",
+        "granted_scope",
+        "policy_revision",
+        "decided_by",
+        "reason",
+        "expires_at",
+        "superseded_at",
+        "created_at",
+        "updated_at"
+      ],
+      "multivalued": [],
+      "foreignKeys": [
+        {
+          "name": "plugin_admin_grants_decided_by_fkey",
+          "columns": [
+            "decided_by"
+          ],
+          "parent": "users",
+          "parentColumns": [
+            "id"
+          ],
+          "required": false,
+          "unique": false
+        },
+        {
+          "name": "fk_plugin_admin_grant_declaration",
+          "columns": [
+            "plugin_version_id",
+            "capability_code"
+          ],
+          "parent": "plugin_capability_declarations",
+          "parentColumns": [
+            "plugin_version_id",
+            "capability_code"
+          ],
+          "required": true,
+          "unique": false
+        }
+      ]
+    },
+    "plugin_authorization_decisions": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "request_id",
+        "plugin_version_id",
+        "user_id",
+        "capability_code",
+        "operation_code",
+        "resource_scope",
+        "admin_grant_id",
+        "user_consent_id",
+        "delegation_id",
+        "outcome",
+        "reason_code",
+        "policy_revision",
+        "trace_id",
+        "context",
+        "created_at"
+      ],
+      "multivalued": [],
+      "foreignKeys": [
+        {
+          "name": "plugin_authorization_decisions_plugin_version_id_fkey",
+          "columns": [
+            "plugin_version_id"
+          ],
+          "parent": "plugin_versions",
+          "parentColumns": [
+            "id"
+          ],
+          "required": true,
+          "unique": false
+        },
+        {
+          "name": "plugin_authorization_decisions_user_id_fkey",
+          "columns": [
+            "user_id"
+          ],
+          "parent": "users",
+          "parentColumns": [
+            "id"
+          ],
+          "required": false,
+          "unique": false
+        },
+        {
+          "name": "plugin_authorization_decisions_admin_grant_id_fkey",
+          "columns": [
+            "admin_grant_id"
+          ],
+          "parent": "plugin_admin_grants",
+          "parentColumns": [
+            "id"
+          ],
+          "required": false,
+          "unique": false
+        },
+        {
+          "name": "plugin_authorization_decisions_user_consent_id_fkey",
+          "columns": [
+            "user_consent_id"
+          ],
+          "parent": "plugin_user_consents",
+          "parentColumns": [
+            "id"
+          ],
+          "required": false,
+          "unique": false
+        },
+        {
+          "name": "plugin_authorization_decisions_delegation_id_fkey",
+          "columns": [
+            "delegation_id"
+          ],
+          "parent": "plugin_delegations",
+          "parentColumns": [
+            "id"
+          ],
+          "required": false,
+          "unique": false
+        }
+      ]
+    },
+    "plugin_capability_declarations": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "plugin_version_id",
+        "capability_code",
+        "purpose",
+        "risk_level",
+        "required",
+        "resource_scope",
+        "data_classification",
+        "created_at"
+      ],
+      "multivalued": [],
+      "foreignKeys": [
+        {
+          "name": "plugin_capability_declarations_plugin_version_id_fkey",
+          "columns": [
+            "plugin_version_id"
+          ],
+          "parent": "plugin_versions",
+          "parentColumns": [
+            "id"
+          ],
+          "required": true,
+          "unique": false
+        }
+      ]
+    },
+    "plugin_catalog_entries": {
+      "primaryKey": [
+        "plugin_name"
+      ],
+      "columns": [
+        "plugin_name",
+        "display_name",
+        "description",
+        "version",
+        "runtime",
+        "visibility",
+        "package_checksum",
+        "risk_level",
+        "data_capabilities",
+        "updated_at",
+        "user_permissions",
+        "experience"
+      ],
+      "multivalued": [],
+      "foreignKeys": []
+    },
+    "plugin_configurations": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "plugin_version_id",
+        "owner_user_id",
+        "definition_version",
+        "revision",
+        "values",
+        "secret_refs",
+        "created_at",
+        "updated_at"
+      ],
+      "multivalued": [],
+      "foreignKeys": [
+        {
+          "name": "plugin_configurations_plugin_version_id_fkey",
+          "columns": [
+            "plugin_version_id"
+          ],
+          "parent": "plugin_versions",
+          "parentColumns": [
+            "id"
+          ],
+          "required": true,
+          "unique": false
+        },
+        {
+          "name": "plugin_configurations_owner_user_id_fkey",
+          "columns": [
+            "owner_user_id"
+          ],
+          "parent": "users",
+          "parentColumns": [
+            "id"
+          ],
+          "required": false,
+          "unique": false
+        }
+      ]
+    },
+    "plugin_delegations": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "plugin_version_id",
+        "subject_user_id",
+        "token_digest",
+        "granted_capabilities",
+        "resource_scope",
+        "status",
+        "not_before",
+        "expires_at",
+        "revoked_at",
+        "created_by",
+        "created_at"
+      ],
+      "multivalued": [],
+      "foreignKeys": [
+        {
+          "name": "plugin_delegations_plugin_version_id_fkey",
+          "columns": [
+            "plugin_version_id"
+          ],
+          "parent": "plugin_versions",
+          "parentColumns": [
+            "id"
+          ],
+          "required": true,
+          "unique": false
+        },
+        {
+          "name": "plugin_delegations_subject_user_id_fkey",
+          "columns": [
+            "subject_user_id"
+          ],
+          "parent": "users",
+          "parentColumns": [
+            "id"
+          ],
+          "required": true,
+          "unique": false
+        },
+        {
+          "name": "plugin_delegations_created_by_fkey",
+          "columns": [
+            "created_by"
+          ],
+          "parent": "users",
+          "parentColumns": [
+            "id"
+          ],
+          "required": false,
+          "unique": false
+        }
+      ]
+    },
+    "plugin_file_metadata": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "plugin_name",
+        "owner_id",
+        "original_name",
+        "stored_name",
+        "content_type",
+        "size_bytes",
+        "storage_key",
+        "retention",
+        "created_at",
+        "deleted_at"
+      ],
+      "multivalued": [],
+      "foreignKeys": []
+    },
+    "plugin_install_requests": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "plugin_name",
+        "user_id",
+        "message",
+        "status",
+        "reviewed_by",
+        "created_at",
+        "reviewed_at",
+        "market_source_id",
+        "market_plugin_id",
+        "market_listing_url",
+        "market_package_url",
+        "market_version",
+        "market_publisher"
+      ],
+      "multivalued": [],
+      "foreignKeys": [
+        {
+          "name": "fk_plugin_install_requests_market_source",
+          "columns": [
+            "market_source_id"
+          ],
+          "parent": "plugin_market_sources",
+          "parentColumns": [
+            "id"
+          ],
+          "required": false,
+          "unique": false
+        }
+      ]
+    },
+    "plugin_installations": {
+      "primaryKey": [
+        "record_id"
+      ],
+      "columns": [
+        "record_id",
+        "state",
+        "publisher",
+        "plugin_key",
+        "version",
+        "revision",
+        "generation",
+        "desired_version"
+      ],
+      "multivalued": [],
+      "foreignKeys": [
+        {
+          "name": "fk_plugin_installations_1",
+          "columns": [
+            "publisher",
+            "plugin_key",
+            "version"
+          ],
+          "parent": "plugin_package_releases",
+          "parentColumns": [
+            "publisher",
+            "plugin_key",
+            "version"
+          ],
+          "required": true,
+          "unique": true
+        },
+        {
+          "name": "fk_plugin_installations_2",
+          "columns": [
+            "publisher",
+            "plugin_key",
+            "desired_version"
+          ],
+          "parent": "plugin_package_releases",
+          "parentColumns": [
+            "publisher",
+            "plugin_key",
+            "version"
+          ],
+          "required": true,
+          "unique": true
+        }
+      ]
+    },
+    "plugin_logs": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "plugin_name",
+        "level",
+        "message",
+        "event_type",
+        "trace_id",
+        "metadata",
+        "created_at",
+        "deleted_at"
+      ],
+      "multivalued": [],
+      "foreignKeys": []
+    },
+    "plugin_market_audits": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "plugin_name",
+        "actor_id",
+        "action",
+        "outcome",
+        "metadata",
+        "created_at"
+      ],
+      "multivalued": [],
+      "foreignKeys": []
+    },
+    "plugin_market_sources": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "display_name",
+        "catalog_url",
+        "public_key",
+        "status",
+        "created_by",
+        "updated_by",
+        "created_at",
+        "updated_at"
+      ],
+      "multivalued": [],
+      "foreignKeys": []
+    },
+    "plugin_operations": {
+      "primaryKey": [
+        "record_id"
+      ],
+      "columns": [
+        "record_id",
+        "state",
+        "publisher",
+        "plugin_key",
+        "version",
+        "revision",
+        "actor_kind",
+        "actor_id",
+        "idempotency_key"
+      ],
+      "multivalued": [],
+      "foreignKeys": [
+        {
+          "name": "fk_plugin_operations_1",
+          "columns": [
+            "publisher",
+            "plugin_key",
+            "version"
+          ],
+          "parent": "plugin_package_releases",
+          "parentColumns": [
+            "publisher",
+            "plugin_key",
+            "version"
+          ],
+          "required": true,
+          "unique": false
+        }
+      ]
+    },
+    "plugin_package_identities": {
+      "primaryKey": [
+        "publisher",
+        "plugin_key",
+        "version"
+      ],
+      "columns": [
+        "publisher",
+        "plugin_key",
+        "version",
+        "package_digest",
+        "created_at"
+      ],
+      "multivalued": [],
+      "foreignKeys": []
+    },
+    "plugin_package_releases": {
+      "primaryKey": [
+        "record_id"
+      ],
+      "columns": [
+        "record_id",
+        "state",
+        "publisher",
+        "plugin_key",
+        "version"
+      ],
+      "multivalued": [],
+      "foreignKeys": [
+        {
+          "name": "fk_plugin_package_releases_1",
+          "columns": [
+            "publisher",
+            "plugin_key"
+          ],
+          "parent": "plugin_packages",
+          "parentColumns": [
+            "publisher",
+            "plugin_key"
+          ],
+          "required": true,
+          "unique": false
+        },
+        {
+          "name": "fk_plugin_package_releases_2",
+          "columns": [
+            "publisher",
+            "plugin_key",
+            "version"
+          ],
+          "parent": "plugin_package_identities",
+          "parentColumns": [
+            "publisher",
+            "plugin_key",
+            "version"
+          ],
+          "required": true,
+          "unique": true
+        }
+      ]
+    },
+    "plugin_packages": {
+      "primaryKey": [
+        "publisher",
+        "plugin_key"
+      ],
+      "columns": [
+        "publisher",
+        "plugin_key",
+        "created_at"
+      ],
+      "multivalued": [],
+      "foreignKeys": []
+    },
+    "plugin_permissions": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "plugin_name",
+        "permission_type",
+        "permission_value",
+        "created_at",
+        "deleted_at"
+      ],
+      "multivalued": [],
+      "foreignKeys": []
+    },
+    "plugin_publishers": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "slug",
+        "display_name",
+        "trust_status",
+        "signing_key_id",
+        "metadata",
+        "created_by",
+        "created_at",
+        "updated_at",
+        "deleted_at"
+      ],
+      "multivalued": [],
+      "foreignKeys": [
+        {
+          "name": "plugin_publishers_created_by_fkey",
+          "columns": [
+            "created_by"
+          ],
+          "parent": "users",
+          "parentColumns": [
+            "id"
+          ],
+          "required": false,
+          "unique": false
+        }
+      ]
+    },
+    "plugin_records": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "plugin_name",
+        "owner_type",
+        "owner_id",
+        "collection",
+        "record_key",
+        "data",
+        "search_text",
+        "version",
+        "created_at",
+        "updated_at",
+        "deleted_at"
+      ],
+      "multivalued": [],
+      "foreignKeys": []
+    },
+    "plugin_releases": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "plugin_name",
+        "version",
+        "checksum",
+        "signature_state",
+        "channel",
+        "rollout_state",
+        "created_at"
+      ],
+      "multivalued": [],
+      "foreignKeys": []
+    },
+    "plugin_secret_values": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "plugin_id",
+        "owner_user_id",
+        "secret_name",
+        "key_version",
+        "algorithm",
+        "ciphertext",
+        "nonce",
+        "status",
+        "metadata",
+        "created_by",
+        "created_at",
+        "rotated_at",
+        "revoked_at"
+      ],
+      "multivalued": [],
+      "foreignKeys": [
+        {
+          "name": "plugin_secret_values_plugin_id_fkey",
+          "columns": [
+            "plugin_id"
+          ],
+          "parent": "plugins",
+          "parentColumns": [
+            "id"
+          ],
+          "required": true,
+          "unique": false
+        },
+        {
+          "name": "plugin_secret_values_owner_user_id_fkey",
+          "columns": [
+            "owner_user_id"
+          ],
+          "parent": "users",
+          "parentColumns": [
+            "id"
+          ],
+          "required": false,
+          "unique": false
+        },
+        {
+          "name": "plugin_secret_values_created_by_fkey",
+          "columns": [
+            "created_by"
+          ],
+          "parent": "users",
+          "parentColumns": [
+            "id"
+          ],
+          "required": false,
+          "unique": false
+        }
+      ]
+    },
+    "plugin_ui_invocations": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "user_id",
+        "plugin_key",
+        "surface_id",
+        "article_content_id",
+        "asset_id",
+        "attachment_id",
+        "presentation",
+        "purpose",
+        "context_digest",
+        "expires_at",
+        "opened_at",
+        "revoked_at",
+        "created_at",
+        "context_kind",
+        "personal_document_id"
+      ],
+      "multivalued": [],
+      "foreignKeys": [
+        {
+          "name": "fk_plugin_ui_invocations_user",
+          "columns": [
+            "user_id"
+          ],
+          "parent": "users",
+          "parentColumns": [
+            "id"
+          ],
+          "required": true,
+          "unique": false
+        },
+        {
+          "name": "fk_plugin_ui_invocations_article",
+          "columns": [
+            "article_content_id"
+          ],
+          "parent": "richtext_article_contents",
+          "parentColumns": [
+            "id"
+          ],
+          "required": false,
+          "unique": false
+        },
+        {
+          "name": "fk_plugin_ui_invocations_asset",
+          "columns": [
+            "asset_id"
+          ],
+          "parent": "user_assets",
+          "parentColumns": [
+            "id"
+          ],
+          "required": false,
+          "unique": false
+        },
+        {
+          "name": "fk_plugin_ui_invocations_attachment",
+          "columns": [
+            "attachment_id"
+          ],
+          "parent": "richtext_article_attachments",
+          "parentColumns": [
+            "id"
+          ],
+          "required": false,
+          "unique": false
+        },
+        {
+          "name": "fk_plugin_ui_invocations_personal_document",
+          "columns": [
+            "personal_document_id"
+          ],
+          "parent": "personal_documents",
+          "parentColumns": [
+            "id"
+          ],
+          "required": false,
+          "unique": false
+        }
+      ]
+    },
+    "plugin_user_consents": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "user_id",
+        "plugin_version_id",
+        "capability_code",
+        "status",
+        "consent_scope",
+        "purpose_hash",
+        "policy_revision",
+        "decided_at",
+        "expires_at",
+        "revoked_at",
+        "superseded_at",
+        "metadata"
+      ],
+      "multivalued": [],
+      "foreignKeys": [
+        {
+          "name": "plugin_user_consents_user_id_fkey",
+          "columns": [
+            "user_id"
+          ],
+          "parent": "users",
+          "parentColumns": [
+            "id"
+          ],
+          "required": true,
+          "unique": false
+        },
+        {
+          "name": "fk_plugin_user_consent_declaration",
+          "columns": [
+            "plugin_version_id",
+            "capability_code"
+          ],
+          "parent": "plugin_capability_declarations",
+          "parentColumns": [
+            "plugin_version_id",
+            "capability_code"
+          ],
+          "required": true,
+          "unique": false
+        }
+      ]
+    },
+    "plugin_user_grants": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "plugin_name",
+        "user_id",
+        "version",
+        "permissions",
+        "status",
+        "granted_at",
+        "revoked_at",
+        "updated_at"
+      ],
+      "multivalued": [],
+      "foreignKeys": []
+    },
+    "plugin_user_installations": {
+      "primaryKey": [
+        "record_id"
+      ],
+      "columns": [
+        "record_id",
+        "state",
+        "publisher",
+        "plugin_key",
+        "version",
+        "owner_user_id",
+        "revision",
+        "generation",
+        "desired_version"
+      ],
+      "multivalued": [],
+      "foreignKeys": [
+        {
+          "name": "fk_plugin_user_installations_1",
+          "columns": [
+            "owner_user_id"
+          ],
+          "parent": "users",
+          "parentColumns": [
+            "id"
+          ],
+          "required": false,
+          "unique": false
+        },
+        {
+          "name": "fk_plugin_user_installations_2",
+          "columns": [
+            "publisher",
+            "plugin_key",
+            "version"
+          ],
+          "parent": "plugin_package_releases",
+          "parentColumns": [
+            "publisher",
+            "plugin_key",
+            "version"
+          ],
+          "required": true,
+          "unique": false
+        },
+        {
+          "name": "fk_plugin_user_installations_3",
+          "columns": [
+            "publisher",
+            "plugin_key",
+            "desired_version"
+          ],
+          "parent": "plugin_package_releases",
+          "parentColumns": [
+            "publisher",
+            "plugin_key",
+            "version"
+          ],
+          "required": true,
+          "unique": false
+        },
+        {
+          "name": "fk_plugin_user_installations_4",
+          "columns": [
+            "publisher",
+            "plugin_key"
+          ],
+          "parent": "plugin_installations",
+          "parentColumns": [
+            "publisher",
+            "plugin_key"
+          ],
+          "required": true,
+          "unique": false
+        }
+      ]
+    },
+    "plugin_v5_admin_grants": {
+      "primaryKey": [
+        "record_id"
+      ],
+      "columns": [
+        "record_id",
+        "state",
+        "publisher",
+        "plugin_key",
+        "version",
+        "revision"
+      ],
+      "multivalued": [],
+      "foreignKeys": [
+        {
+          "name": "fk_plugin_v5_admin_grants_1",
+          "columns": [
+            "publisher",
+            "plugin_key",
+            "version"
+          ],
+          "parent": "plugin_package_releases",
+          "parentColumns": [
+            "publisher",
+            "plugin_key",
+            "version"
+          ],
+          "required": true,
+          "unique": true
+        }
+      ]
+    },
+    "plugin_v5_configurations": {
+      "primaryKey": [
+        "record_id"
+      ],
+      "columns": [
+        "record_id",
+        "state",
+        "publisher",
+        "plugin_key",
+        "version",
+        "owner_user_id",
+        "revision"
+      ],
+      "multivalued": [],
+      "foreignKeys": [
+        {
+          "name": "fk_plugin_v5_configurations_1",
+          "columns": [
+            "owner_user_id"
+          ],
+          "parent": "users",
+          "parentColumns": [
+            "id"
+          ],
+          "required": false,
+          "unique": false
+        },
+        {
+          "name": "fk_plugin_v5_configurations_2",
+          "columns": [
+            "publisher",
+            "plugin_key",
+            "version"
+          ],
+          "parent": "plugin_package_releases",
+          "parentColumns": [
+            "publisher",
+            "plugin_key",
+            "version"
+          ],
+          "required": true,
+          "unique": false
+        }
+      ]
+    },
+    "plugin_v5_event_deliveries": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "state",
+        "source_event_id",
+        "instance_id",
+        "publisher",
+        "plugin_key",
+        "version",
+        "instance_generation"
+      ],
+      "multivalued": [],
+      "foreignKeys": [
+        {
+          "name": "fk_plugin_v5_event_deliveries_1",
+          "columns": [
+            "publisher",
+            "plugin_key",
+            "version"
+          ],
+          "parent": "plugin_package_releases",
+          "parentColumns": [
+            "publisher",
+            "plugin_key",
+            "version"
+          ],
+          "required": true,
+          "unique": false
+        }
+      ]
+    },
+    "plugin_v5_user_consents": {
+      "primaryKey": [
+        "record_id"
+      ],
+      "columns": [
+        "record_id",
+        "state",
+        "publisher",
+        "plugin_key",
+        "version",
+        "owner_user_id",
+        "revision"
+      ],
+      "multivalued": [],
+      "foreignKeys": [
+        {
+          "name": "fk_plugin_v5_user_consents_1",
+          "columns": [
+            "owner_user_id"
+          ],
+          "parent": "users",
+          "parentColumns": [
+            "id"
+          ],
+          "required": false,
+          "unique": false
+        },
+        {
+          "name": "fk_plugin_v5_user_consents_2",
+          "columns": [
+            "publisher",
+            "plugin_key",
+            "version"
+          ],
+          "parent": "plugin_package_releases",
+          "parentColumns": [
+            "publisher",
+            "plugin_key",
+            "version"
+          ],
+          "required": true,
+          "unique": false
+        }
+      ]
+    },
+    "plugin_versions": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "plugin_id",
+        "version",
+        "package_digest",
+        "signature_state",
+        "channel",
+        "lifecycle_status",
+        "manifest_api_version",
+        "host_api_version",
+        "permission_fingerprint",
+        "manifest",
+        "metadata",
+        "created_by",
+        "created_at",
+        "activated_at",
+        "retired_at"
+      ],
+      "multivalued": [],
+      "foreignKeys": [
+        {
+          "name": "plugin_versions_plugin_id_fkey",
+          "columns": [
+            "plugin_id"
+          ],
+          "parent": "plugins",
+          "parentColumns": [
+            "id"
+          ],
+          "required": true,
+          "unique": false
+        },
+        {
+          "name": "plugin_versions_created_by_fkey",
+          "columns": [
+            "created_by"
+          ],
+          "parent": "users",
+          "parentColumns": [
+            "id"
+          ],
+          "required": false,
+          "unique": false
+        }
+      ]
+    },
+    "plugins": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "name",
+        "display_name",
+        "version",
+        "description",
+        "author",
+        "runtime",
+        "manifest",
+        "status",
+        "api_key",
+        "config",
+        "error_message",
+        "installed_by",
+        "installed_at",
+        "updated_at",
+        "deleted_at",
+        "checksum",
+        "package_size",
+        "last_preflight_at",
+        "backend_state",
+        "frontend_state",
+        "health_state",
+        "ui_revision",
+        "publisher_id"
+      ],
+      "multivalued": [],
+      "foreignKeys": [
+        {
+          "name": "fk_plugins_publisher",
+          "columns": [
+            "publisher_id"
+          ],
+          "parent": "plugin_publishers",
+          "parentColumns": [
+            "id"
+          ],
+          "required": false,
+          "unique": false
+        }
+      ]
+    },
+    "posts": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "thread_id",
+        "author_id",
+        "author_name",
+        "parent_id",
+        "content",
+        "content_format",
+        "status",
+        "like_count",
+        "floor_number",
+        "metadata",
+        "created_at",
+        "updated_at",
+        "deleted_at",
+        "parent_floor_number",
+        "facts_version",
+        "deleted_actor_kind",
+        "deleted_actor_id"
+      ],
+      "multivalued": [],
+      "foreignKeys": [
+        {
+          "name": "fk_posts_author",
+          "columns": [
+            "author_id"
+          ],
+          "parent": "users",
+          "parentColumns": [
+            "id"
+          ],
+          "required": true,
+          "unique": false
+        },
+        {
+          "name": "fk_posts_parent",
+          "columns": [
+            "parent_id"
+          ],
+          "parent": "posts",
+          "parentColumns": [
+            "id"
+          ],
+          "required": false,
+          "unique": false
+        },
+        {
+          "name": "fk_posts_thread",
+          "columns": [
+            "thread_id"
+          ],
+          "parent": "threads",
+          "parentColumns": [
+            "id"
+          ],
+          "required": true,
+          "unique": false
+        }
+      ]
+    },
+    "richtext_article_assets": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "thread_id",
+        "article_content_id",
+        "uploader_id",
+        "file_url",
+        "file_name",
+        "file_size",
+        "mime_type",
+        "width",
+        "height",
+        "created_at",
+        "asset_id"
+      ],
+      "multivalued": [],
+      "foreignKeys": [
+        {
+          "name": "fk_richtext_assets_content",
+          "columns": [
+            "article_content_id"
+          ],
+          "parent": "richtext_article_contents",
+          "parentColumns": [
+            "id"
+          ],
+          "required": false,
+          "unique": false
+        },
+        {
+          "name": "fk_richtext_assets_thread",
+          "columns": [
+            "thread_id"
+          ],
+          "parent": "threads",
+          "parentColumns": [
+            "id"
+          ],
+          "required": false,
+          "unique": false
+        },
+        {
+          "name": "fk_richtext_assets_uploader",
+          "columns": [
+            "uploader_id"
+          ],
+          "parent": "users",
+          "parentColumns": [
+            "id"
+          ],
+          "required": true,
+          "unique": false
+        },
+        {
+          "name": "fk_richtext_article_assets_user_asset",
+          "columns": [
+            "asset_id"
+          ],
+          "parent": "user_assets",
+          "parentColumns": [
+            "id"
+          ],
+          "required": false,
+          "unique": false
+        }
+      ]
+    },
+    "richtext_article_attachments": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "article_content_id",
+        "asset_id",
+        "display_name",
+        "display_order",
+        "created_at",
+        "updated_at",
+        "facts_version"
+      ],
+      "multivalued": [],
+      "foreignKeys": [
+        {
+          "name": "fk_richtext_article_attachments_article",
+          "columns": [
+            "article_content_id"
+          ],
+          "parent": "richtext_article_contents",
+          "parentColumns": [
+            "id"
+          ],
+          "required": true,
+          "unique": false
+        },
+        {
+          "name": "fk_richtext_article_attachments_asset",
+          "columns": [
+            "asset_id"
+          ],
+          "parent": "user_assets",
+          "parentColumns": [
+            "id"
+          ],
+          "required": true,
+          "unique": false
+        }
+      ]
+    },
+    "richtext_article_contents": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "thread_id",
+        "title",
+        "summary",
+        "cover_url",
+        "content_html",
+        "content_json",
+        "sanitized_html",
+        "status",
+        "created_by",
+        "updated_by",
+        "published_at",
+        "created_at",
+        "updated_at",
+        "deleted_at",
+        "updated_actor_kind",
+        "updated_actor_id",
+        "facts_version"
+      ],
+      "multivalued": [],
+      "foreignKeys": [
+        {
+          "name": "fk_richtext_contents_created_by",
+          "columns": [
+            "created_by"
+          ],
+          "parent": "users",
+          "parentColumns": [
+            "id"
+          ],
+          "required": true,
+          "unique": false
+        },
+        {
+          "name": "fk_richtext_contents_thread",
+          "columns": [
+            "thread_id"
+          ],
+          "parent": "threads",
+          "parentColumns": [
+            "id"
+          ],
+          "required": true,
+          "unique": true
+        },
+        {
+          "name": "fk_richtext_contents_updated_by",
+          "columns": [
+            "updated_by"
+          ],
+          "parent": "users",
+          "parentColumns": [
+            "id"
+          ],
+          "required": false,
+          "unique": false
+        }
+      ]
+    },
+    "role_permissions": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "role_id",
+        "permission_id",
+        "created_by",
+        "created_at",
+        "deleted_at",
+        "facts_version"
+      ],
+      "multivalued": [],
+      "foreignKeys": [
+        {
+          "name": "fk_v10_role_permissions_permission",
+          "columns": [
+            "permission_id"
+          ],
+          "parent": "permission_definitions",
+          "parentColumns": [
+            "id"
+          ],
+          "required": true,
+          "unique": false
+        },
+        {
+          "name": "fk_v10_role_permissions_role",
+          "columns": [
+            "role_id"
+          ],
+          "parent": "roles",
+          "parentColumns": [
+            "id"
+          ],
+          "required": true,
+          "unique": false
+        }
+      ]
+    },
+    "roles": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "name",
+        "description",
+        "is_system",
+        "created_at",
+        "updated_at",
+        "deleted_at",
+        "facts_version"
+      ],
+      "multivalued": [],
+      "foreignKeys": []
+    },
+    "route_operations": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "operation_code",
+        "module_owner",
+        "method",
+        "path_template",
+        "audience",
+        "legacy_aliases",
+        "updated_at"
+      ],
+      "multivalued": [],
+      "foreignKeys": []
+    },
+    "route_permission_bindings": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "route_operation_id",
+        "permission_id",
+        "created_at",
+        "deleted_at"
+      ],
+      "multivalued": [],
+      "foreignKeys": [
+        {
+          "name": "fk_route_permission_definition",
+          "columns": [
+            "permission_id"
+          ],
+          "parent": "permission_definitions",
+          "parentColumns": [
+            "id"
+          ],
+          "required": true,
+          "unique": false
+        },
+        {
+          "name": "fk_route_permission_operation",
+          "columns": [
+            "route_operation_id"
+          ],
+          "parent": "route_operations",
+          "parentColumns": [
+            "id"
+          ],
+          "required": true,
+          "unique": false
+        }
+      ]
+    },
+    "schema_migration_locks": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "owner_name",
+        "acquired_at"
+      ],
+      "multivalued": [],
+      "foreignKeys": []
+    },
+    "schema_migrations": {
+      "primaryKey": [
+        "version"
+      ],
+      "columns": [
+        "version",
+        "name",
+        "checksum",
+        "execution_ms",
+        "executor",
+        "applied_at"
+      ],
+      "multivalued": [],
+      "foreignKeys": []
+    },
+    "secondhand_details": {
+      "primaryKey": [
+        "thread_id"
+      ],
+      "columns": [
+        "thread_id",
+        "price_minor",
+        "currency",
+        "item_condition",
+        "trade_method",
+        "trade_status",
+        "location_scope",
+        "version",
+        "created_by",
+        "created_at",
+        "updated_at"
+      ],
+      "multivalued": [],
+      "foreignKeys": [
+        {
+          "name": "fk_secondhand_details_created_by",
+          "columns": [
+            "created_by"
+          ],
+          "parent": "users",
+          "parentColumns": [
+            "id"
+          ],
+          "required": true,
+          "unique": false
+        },
+        {
+          "name": "fk_secondhand_details_thread",
+          "columns": [
+            "thread_id"
+          ],
+          "parent": "threads",
+          "parentColumns": [
+            "id"
+          ],
+          "required": true,
+          "unique": true
+        }
+      ]
+    },
+    "sessions": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "user_id",
+        "device_id",
+        "device_name",
+        "device_type",
+        "user_agent",
+        "last_active_at",
+        "expires_at",
+        "created_at",
+        "updated_at",
+        "deleted_at",
+        "refresh_token_digest",
+        "token_family_id",
+        "rotated_from_id",
+        "rotated_to_id",
+        "ip_hash",
+        "revoked_at",
+        "revoke_reason",
+        "authentication_strength",
+        "mfa_authenticated_at"
+      ],
+      "multivalued": [],
+      "foreignKeys": [
+        {
+          "name": "fk_sessions_user",
+          "columns": [
+            "user_id"
+          ],
+          "parent": "users",
+          "parentColumns": [
+            "id"
+          ],
+          "required": true,
+          "unique": false
+        }
+      ]
+    },
+    "storage_objects": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "owner_user_id",
+        "namespace",
+        "purpose",
+        "provider",
+        "storage_key",
+        "original_name",
+        "mime_type",
+        "size_bytes",
+        "sha256",
+        "status",
+        "version",
+        "created_at",
+        "updated_at",
+        "deleted_at"
+      ],
+      "multivalued": [],
+      "foreignKeys": [
+        {
+          "name": "storage_objects_owner_user_id_fkey",
+          "columns": [
+            "owner_user_id"
+          ],
+          "parent": "users",
+          "parentColumns": [
+            "id"
+          ],
+          "required": true,
+          "unique": false
+        }
+      ]
+    },
+    "tags": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "name",
+        "slug",
+        "description",
+        "color",
+        "thread_count",
+        "created_at",
+        "updated_at",
+        "deleted_at"
+      ],
+      "multivalued": [],
+      "foreignKeys": []
+    },
+    "threads": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "title",
+        "content",
+        "content_format",
+        "author_id",
+        "author_name",
+        "category_id",
+        "status",
+        "is_pinned",
+        "is_locked",
+        "is_highlighted",
+        "view_count",
+        "reply_count",
+        "like_count",
+        "last_post_id",
+        "last_post_at",
+        "tags",
+        "metadata",
+        "created_at",
+        "updated_at",
+        "deleted_at",
+        "publication_status",
+        "moderation_status",
+        "deletion_status",
+        "moderation_reason",
+        "moderation_by",
+        "moderation_at",
+        "current_revision",
+        "thread_type",
+        "facts_version",
+        "moderation_actor_kind",
+        "moderation_actor_id"
+      ],
+      "multivalued": [
+        "tags"
+      ],
+      "foreignKeys": [
+        {
+          "name": "fk_threads_author",
+          "columns": [
+            "author_id"
+          ],
+          "parent": "users",
+          "parentColumns": [
+            "id"
+          ],
+          "required": true,
+          "unique": false
+        },
+        {
+          "name": "fk_threads_category",
+          "columns": [
+            "category_id"
+          ],
+          "parent": "categories",
+          "parentColumns": [
+            "id"
+          ],
+          "required": true,
+          "unique": false
+        }
+      ]
+    },
+    "user_assets": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "owner_user_id",
+        "kind",
+        "original_name",
+        "storage_object_id",
+        "mime_type",
+        "size_bytes",
+        "status",
+        "version",
+        "created_at",
+        "updated_at",
+        "trashed_at",
+        "deleted_at",
+        "facts_version"
+      ],
+      "multivalued": [],
+      "foreignKeys": [
+        {
+          "name": "fk_user_assets_owner",
+          "columns": [
+            "owner_user_id"
+          ],
+          "parent": "users",
+          "parentColumns": [
+            "id"
+          ],
+          "required": true,
+          "unique": false
+        },
+        {
+          "name": "fk_user_assets_storage_object",
+          "columns": [
+            "storage_object_id"
+          ],
+          "parent": "storage_objects",
+          "parentColumns": [
+            "id"
+          ],
+          "required": true,
+          "unique": true
+        }
+      ]
+    },
+    "user_roles": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "user_id",
+        "role_id",
+        "scope_type",
+        "scope_id",
+        "created_at",
+        "deleted_at",
+        "facts_version"
+      ],
+      "multivalued": [],
+      "foreignKeys": [
+        {
+          "name": "fk_user_roles_role",
+          "columns": [
+            "role_id"
+          ],
+          "parent": "roles",
+          "parentColumns": [
+            "id"
+          ],
+          "required": true,
+          "unique": false
+        },
+        {
+          "name": "fk_user_roles_user",
+          "columns": [
+            "user_id"
+          ],
+          "parent": "users",
+          "parentColumns": [
+            "id"
+          ],
+          "required": true,
+          "unique": false
+        }
+      ]
+    },
+    "user_schedule_preferences": {
+      "primaryKey": [
+        "user_id"
+      ],
+      "columns": [
+        "user_id",
+        "academic_term_id",
+        "updated_at"
+      ],
+      "multivalued": [],
+      "foreignKeys": [
+        {
+          "name": "user_schedule_preferences_academic_term_id_fkey",
+          "columns": [
+            "academic_term_id"
+          ],
+          "parent": "academic_terms",
+          "parentColumns": [
+            "id"
+          ],
+          "required": true,
+          "unique": false
+        },
+        {
+          "name": "user_schedule_preferences_user_id_fkey",
+          "columns": [
+            "user_id"
+          ],
+          "parent": "users",
+          "parentColumns": [
+            "id"
+          ],
+          "required": true,
+          "unique": true
+        }
+      ]
+    },
+    "user_schedule_terms": {
+      "primaryKey": [
+        "user_id",
+        "academic_term_id"
+      ],
+      "columns": [
+        "user_id",
+        "academic_term_id",
+        "created_at",
+        "updated_at",
+        "current_object_id",
+        "first_week_start",
+        "version"
+      ],
+      "multivalued": [],
+      "foreignKeys": [
+        {
+          "name": "user_schedule_terms_academic_term_id_fkey",
+          "columns": [
+            "academic_term_id"
+          ],
+          "parent": "academic_terms",
+          "parentColumns": [
+            "id"
+          ],
+          "required": true,
+          "unique": false
+        },
+        {
+          "name": "user_schedule_terms_current_object_id_fkey",
+          "columns": [
+            "current_object_id"
+          ],
+          "parent": "storage_objects",
+          "parentColumns": [
+            "id"
+          ],
+          "required": false,
+          "unique": false
+        },
+        {
+          "name": "user_schedule_terms_user_id_fkey",
+          "columns": [
+            "user_id"
+          ],
+          "parent": "users",
+          "parentColumns": [
+            "id"
+          ],
+          "required": true,
+          "unique": false
+        }
+      ]
+    },
+    "user_space_contents": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "user_id",
+        "thread_id",
+        "title",
+        "excerpt",
+        "author_name",
+        "category_id",
+        "tags",
+        "status",
+        "thread_created_at",
+        "thread_updated_at",
+        "synced_at",
+        "deleted_at"
+      ],
+      "multivalued": [
+        "tags"
+      ],
+      "foreignKeys": [
+        {
+          "name": "fk_user_space_contents_category",
+          "columns": [
+            "category_id"
+          ],
+          "parent": "categories",
+          "parentColumns": [
+            "id"
+          ],
+          "required": true,
+          "unique": false
+        },
+        {
+          "name": "fk_user_space_contents_thread",
+          "columns": [
+            "thread_id"
+          ],
+          "parent": "threads",
+          "parentColumns": [
+            "id"
+          ],
+          "required": true,
+          "unique": false
+        },
+        {
+          "name": "fk_user_space_contents_user",
+          "columns": [
+            "user_id"
+          ],
+          "parent": "users",
+          "parentColumns": [
+            "id"
+          ],
+          "required": true,
+          "unique": false
+        }
+      ]
+    },
+    "user_space_style_snapshots": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "user_id",
+        "snapshot_type",
+        "style_name",
+        "style_version",
+        "theme",
+        "layout",
+        "style_manifest",
+        "created_at",
+        "facts_version"
+      ],
+      "multivalued": [],
+      "foreignKeys": []
+    },
+    "user_spaces": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "user_id",
+        "title",
+        "bio",
+        "avatar",
+        "cover_image",
+        "theme",
+        "layout",
+        "visibility",
+        "sync_enabled",
+        "sync_categories",
+        "sync_tags",
+        "created_at",
+        "updated_at",
+        "deleted_at",
+        "style_name",
+        "style_version",
+        "style_manifest",
+        "disabled_at",
+        "disabled_by",
+        "disabled_reason",
+        "last_sync_at",
+        "last_sync_error",
+        "disabled_actor_kind",
+        "disabled_actor_id",
+        "facts_version"
+      ],
+      "multivalued": [
+        "sync_categories",
+        "sync_tags"
+      ],
+      "foreignKeys": [
+        {
+          "name": "fk_user_spaces_user",
+          "columns": [
+            "user_id"
+          ],
+          "parent": "users",
+          "parentColumns": [
+            "id"
+          ],
+          "required": true,
+          "unique": false
+        }
+      ]
+    },
+    "user_storage_accounts": {
+      "primaryKey": [
+        "user_id"
+      ],
+      "columns": [
+        "user_id",
+        "used_bytes",
+        "reserved_bytes",
+        "version",
+        "created_at",
+        "updated_at"
+      ],
+      "multivalued": [],
+      "foreignKeys": [
+        {
+          "name": "user_storage_accounts_user_id_fkey",
+          "columns": [
+            "user_id"
+          ],
+          "parent": "users",
+          "parentColumns": [
+            "id"
+          ],
+          "required": true,
+          "unique": true
+        }
+      ]
+    },
+    "user_storage_quotas": {
+      "primaryKey": [
+        "user_id"
+      ],
+      "columns": [
+        "user_id",
+        "quota_bytes",
+        "updated_by",
+        "created_at",
+        "updated_at",
+        "updated_actor_kind",
+        "updated_actor_id",
+        "facts_version"
+      ],
+      "multivalued": [],
+      "foreignKeys": [
+        {
+          "name": "user_storage_quotas_updated_by_fkey",
+          "columns": [
+            "updated_by"
+          ],
+          "parent": "users",
+          "parentColumns": [
+            "id"
+          ],
+          "required": false,
+          "unique": false
+        },
+        {
+          "name": "user_storage_quotas_user_id_fkey",
+          "columns": [
+            "user_id"
+          ],
+          "parent": "users",
+          "parentColumns": [
+            "id"
+          ],
+          "required": true,
+          "unique": true
+        }
+      ]
+    },
+    "user_storage_reservations": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "user_id",
+        "object_id",
+        "reserved_bytes",
+        "status",
+        "expires_at",
+        "created_at",
+        "updated_at"
+      ],
+      "multivalued": [],
+      "foreignKeys": [
+        {
+          "name": "user_storage_reservations_object_id_fkey",
+          "columns": [
+            "object_id"
+          ],
+          "parent": "storage_objects",
+          "parentColumns": [
+            "id"
+          ],
+          "required": true,
+          "unique": true
+        },
+        {
+          "name": "user_storage_reservations_user_id_fkey",
+          "columns": [
+            "user_id"
+          ],
+          "parent": "users",
+          "parentColumns": [
+            "id"
+          ],
+          "required": true,
+          "unique": false
+        }
+      ]
+    },
+    "users": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "username",
+        "nickname",
+        "email",
+        "avatar",
+        "bio",
+        "status",
+        "created_at",
+        "updated_at",
+        "deleted_at",
+        "auth_version",
+        "must_change_password"
+      ],
+      "multivalued": [],
+      "foreignKeys": []
+    },
+    "webhook_deliveries": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "endpoint_id",
+        "event_id",
+        "event_type",
+        "target_url",
+        "status",
+        "attempts",
+        "response_status",
+        "error_message",
+        "created_at",
+        "updated_at",
+        "outbox_event_id",
+        "delivery_key",
+        "next_attempt_at",
+        "dead_lettered_at"
+      ],
+      "multivalued": [],
+      "foreignKeys": [
+        {
+          "name": "fk_webhook_deliveries_endpoint",
+          "columns": [
+            "endpoint_id"
+          ],
+          "parent": "webhook_endpoints",
+          "parentColumns": [
+            "id"
+          ],
+          "required": true,
+          "unique": false
+        },
+        {
+          "name": "fk_webhook_deliveries_outbox",
+          "columns": [
+            "outbox_event_id"
+          ],
+          "parent": "platform_outbox",
+          "parentColumns": [
+            "id"
+          ],
+          "required": false,
+          "unique": false
+        }
+      ]
+    },
+    "webhook_endpoints": {
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        "id",
+        "name",
+        "url",
+        "secret",
+        "events",
+        "enabled",
+        "max_retries",
+        "timeout_ms",
+        "created_by",
+        "created_at",
+        "updated_at",
+        "deleted_at",
+        "max_concurrent",
+        "rate_limit_per_minute"
+      ],
+      "multivalued": [
+        "events"
+      ],
+      "foreignKeys": []
+    }
+  }
+}

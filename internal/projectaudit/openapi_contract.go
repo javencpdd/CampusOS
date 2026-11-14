@@ -219,6 +219,9 @@ var noContentHandlers = map[string]bool{
 
 func profileFor(route RouteContract) operationProfile {
 	profile := operationProfiles[route.Handler]
+	if current, ok := runtimeConfigProfile(route.OperationCode); ok {
+		profile = current
+	}
 	if current, ok := knowledgeProfile(route.OperationCode); ok {
 		profile = current
 	}
@@ -276,7 +279,7 @@ func openAPIComponents() string {
       name: Authorization
       description: "Integration cint1_<selector>.<secret>; independent of JWT and ApiKey."
   schemas:
-` + integrationOpenAPISchemas() + knowledgeOpenAPISchemas() + aiOpenAPISchemas() + v5UIActionsOpenAPISchemas() + v5InstallationOpenAPISchemas() + `    EmptyObject:
+` + integrationOpenAPISchemas() + knowledgeOpenAPISchemas() + aiOpenAPISchemas() + runtimeConfigOpenAPISchemas() + v5UIActionsOpenAPISchemas() + v5InstallationOpenAPISchemas() + `    EmptyObject:
       type: object
       additionalProperties: false
     AdminDomainLoginRequest:

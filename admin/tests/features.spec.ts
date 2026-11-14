@@ -2,6 +2,28 @@ import { describe, expect, it } from 'vitest'
 import { mapBuiltinFeatures } from '../src/modules/features/catalog'
 
 describe('Built-in Feature compatibility projection', () => {
+  it('shows disabled Knowledge from the server registry with an actionable management entry', () => {
+    const rows = mapBuiltinFeatures([{ id: 'knowledge', kind: 'builtin-feature', display_name: 'Knowledge', status: 'stopped', desired_enabled: false, activation_mode: 'hot-gated', config_sources: [] }])
+    expect(rows).toHaveLength(1)
+    expect(rows[0]).toMatchObject({ id: 'knowledge', label: '知识检索', management: { path: '/knowledge', label: '知识来源管理' }, state: { desired_enabled: false, activation_mode: 'hot-gated' } })
+    expect(rows[0].configSources).toEqual([])
+  })
+
+  it('does not hide newly registered built-ins behind the local label catalog', () => {
+    const rows = mapBuiltinFeatures([{ id: 'new-campus-feature', kind: 'builtin-feature', display_name: '新增功能', description: 'server description', status: 'running', desired_enabled: true, config_sources: [{ id: 'new-campus-feature', label: '服务端配置' }] }])
+    expect(rows).toHaveLength(1)
+    expect(rows[0]).toMatchObject({ id: 'new-campus-feature', label: '新增功能', description: 'server description', configSources: [{ name: 'new-campus-feature', label: '服务端配置' }], state: { status: 'running' } })
+  })
+
+  it('does not fabricate stopped controls for missing features or include Core and external lifecycle', () => {
+    expect(mapBuiltinFeatures([])).toEqual([])
+    expect(mapBuiltinFeatures([
+      { id: 'moderation', kind: 'core', activation_mode: 'always-on' },
+      { id: 'personal-space', capability_class: 'external' },
+      { id: 'third-party', kind: 'external' },
+    ])).toEqual([])
+  })
+
   it('maps legacy plugin payloads to stable feature labels and state', () => {
     const features = mapBuiltinFeatures([
       {
