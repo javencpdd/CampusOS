@@ -16,6 +16,13 @@
       <p>重新加载后可继续操作。若仍失败，请检查这台电脑的网络或代理能否访问插件界面地址：</p>
       <code>{{ identity.origin }}</code>
       <el-button type="primary" @click="retry">重新加载插件界面</el-button>
+      <template v-if="directWindow">
+        <p>
+          Windows
+          若能访问本站IP、但打不开上方域名，可下载并双击直连启动器。在独立窗口登录后重新打开插件；RSS本机助手需在该窗口重新配对。
+        </p>
+        <el-button @click="downloadDirectWindow">下载 Windows 直连启动器</el-button>
+      </template>
     </div>
   </section>
 </template>
@@ -23,6 +30,7 @@
 <script setup lang="ts">
 import { getAccessToken } from '@/modules/identity/session'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { windowsDirectWindowFile } from './pluginDirectWindow'
 import {
   PLUGIN_BRIDGE_VERSION,
   dispatchPluginBridgeRequest,
@@ -50,6 +58,9 @@ const state = ref<'connecting' | 'ready' | 'blocked' | 'unavailable'>(
   validFrameIdentity(props.identity, window.location.origin) && sourceMatchesIdentity() ? 'connecting' : 'blocked',
 )
 const frameKey = computed(() => JSON.stringify([props.identity, props.src, attempt.value]))
+const directWindow = computed(() =>
+  windowsDirectWindowFile(window.location.origin, props.identity.origin, window.location.pathname),
+)
 const message = computed(() => {
   if (state.value === 'blocked') return '插件界面未通过隔离连接校验，已阻止加载。'
   if (state.value === 'unavailable') return failure.value
@@ -96,6 +107,16 @@ function startLoadDeadline() {
 function retry() {
   if (getAccessToken() !== identityToken) return reject()
   attempt.value++
+}
+
+function downloadDirectWindow() {
+  if (!directWindow.value) return
+  const url = URL.createObjectURL(new Blob([directWindow.value.content], { type: 'application/octet-stream' }))
+  const link = document.createElement('a')
+  link.href = url
+  link.download = directWindow.value.filename
+  link.click()
+  URL.revokeObjectURL(url)
 }
 
 function newChallenge(): string {
