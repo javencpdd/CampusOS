@@ -19,3 +19,5 @@ go run ./cmd/campusos-plugin-v5-check -root plugins
 查看[包与签名操作说明](../docs/help/插件v5包与签名操作说明.md)及[阶段进度](../docs/进度/v1.2-dev/v1.2.114-dev.md)。历史v4类型/校验器留作旧数据和测试参考，生产入口已退役；不得把旧目录或CLI当成v5安装后门。
 
 - `campusos.ai-knowledge/`：14c双向Go SDK示例，单独批准的本机/远程模型与公开问答Host消费，以及由Knowledge重核当前原来源的公开贡献；[构建与授权](campusos.ai-knowledge/README.md)。更新时间：2026-10-25（Asia/Shanghai）。
+
+- `campusos.rss-publisher/`：2.0.0 RSS/Atom 个人订阅，解析与界面完全在包内；通用 Host API、opaque 沙箱，无需本机助手/启动器；图文导入后手动发布；[构建与安装](campusos.rss-publisher/README.md)。更新时间：2026-11-15（Asia/Shanghai）。

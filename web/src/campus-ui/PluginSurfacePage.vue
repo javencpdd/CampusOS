@@ -1,12 +1,13 @@
 <template>
   <component v-if="trustedComponent" :is="trustedComponent" />
-  <IsolatedPluginFrame
-    v-else-if="available && frameIdentity && frameURL"
-    :identity="frameIdentity"
-    :src="frameURL"
-    :title="surface?.type === 'document-preview' ? 'PDF 预览' : '插件界面'"
-    :request="requestFromFrame"
-  />
+  <template v-else-if="available && frameIdentity && frameURL">
+    <IsolatedPluginFrame
+      :identity="frameIdentity"
+      :src="frameURL"
+      :title="surface?.type === 'document-preview' ? 'PDF 预览' : '插件界面'"
+      :request="requestFromFrame"
+    />
+  </template>
   <DeclarativeRenderer
     v-else-if="available && surface?.renderer === 'schema' && surface.schema"
     :node="surface.schema"
@@ -22,8 +23,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useUIRuntimeStore } from '@/modules/plugin-runtime/store'
 import DeclarativeRenderer from './DeclarativeRenderer.vue'
 import { trustedModules } from './trustedModules'
@@ -32,19 +33,24 @@ import IsolatedPluginFrame from './IsolatedPluginFrame.vue'
 import { handleIsolatedPluginRequest, isolatedPluginFrameURL } from './isolatedPluginHost'
 import type { PluginBridgeRequest, PluginFrameIdentity } from './isolatedPluginBridge'
 const route = useRoute()
+const router = useRouter()
+let disposed = false
+onBeforeUnmount(() => {
+  disposed = true
+})
 const runtime = useUIRuntimeStore()
 const surface = computed(() => runtime.surface(String(route.meta.surfaceId || '')))
 const versionChanged = ref(false)
 watch(
-  () => surface.value?.plugin_version,
-  (current, previous) => {
-    if (previous && current !== previous) versionChanged.value = true
-  },
-)
-watch(
-  () => route.query.invocation,
-  () => {
-    versionChanged.value = false
+  () => [route.meta.surfaceId, route.query.invocation, surface.value?.plugin_version] as const,
+  ([surfaceID, invocation, version], [previousSurfaceID, previousInvocation, previousVersion]) => {
+    // The router reuses this component across built-in and plugin pages.
+    // Fence version changes only within the current surface and invocation.
+    if (surfaceID !== previousSurfaceID || invocation !== previousInvocation) {
+      versionChanged.value = false
+    } else if (previousVersion && version !== previousVersion) {
+      versionChanged.value = true
+    }
   },
 )
 const available = computed(
@@ -73,14 +79,24 @@ const frameIdentity = computed<PluginFrameIdentity | undefined>(() => {
     surfaceID: surface.value.id.replace(`${surface.value.plugin}.`, ''),
     audience: frame.audience,
     origin: frame.origin,
+    ...(frame.opaque ? { opaque: true } : {}),
   }
 })
 const frameURL = computed(() => {
   const frame = surface.value?.frame
   return frame ? isolatedPluginFrameURL(frame.src, invocationID.value) : ''
 })
-const requestFromFrame = (request: PluginBridgeRequest) => {
+const requestFromFrame = (request: PluginBridgeRequest, portActive: () => boolean = () => true) => {
   if (!surface.value) return Promise.reject(new Error('插件上下文不可用。'))
-  return handleIsolatedPluginRequest(surface.value, invocationID.value, request)
+  return handleIsolatedPluginRequest(
+    surface.value,
+    invocationID.value,
+    request,
+    (id) =>
+      disposed || !portActive()
+        ? Promise.reject(new Error('插件界面已关闭'))
+        : router.push({ path: '/threads/create', query: { plugin_import: id } }),
+    () => !disposed && portActive(),
+  )
 }
 </script>

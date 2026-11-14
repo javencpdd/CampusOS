@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>RSS 图文订阅</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <main id="app">
+      <header>
+        <p class="eyebrow">RSS · ATOM</p>
+        <h1>订阅喜欢的内容，整理后再分享</h1>
+        <p>保留图文结构与原文出处，确认后导入 CampusOS 图文编辑器。</p>
+      </header>
+      <p id="status" role="status">正在连接 CampusOS…</p>
+      <section class="panel" aria-labelledby="reader-title">
+        <h2 id="reader-title">读取方式</h2>
+        <p id="reader-location">读取位置：CampusOS 服务器</p>
+        <p class="hint">
+          服务器出站代理及线路由管理员统一配置，用户不能在插件中修改。此页面无需下载本机助手；它使用服务器的网络，不使用你电脑上的代理。本机抓取客户端属于不同读取方式，其代理应仅由本人在自己的电脑上配置。
+        </p>
+      </section>
+      <section class="panel" aria-labelledby="sources-title">
+        <h2 id="sources-title">我的订阅</h2>
+        <div id="add-source">
+          <label for="feed-url">公开订阅地址</label>
+          <div class="row">
+            <input
+              id="feed-url"
+              type="url"
+              placeholder="https://example.com/feed.xml"
+              maxlength="512"
+              required
+            /><button id="add-button" type="button">添加订阅</button>
+          </div>
+        </div>
+        <p class="hint">
+          支持 RSS 2.0 / RSS 1.0 / Atom，最多 6 个订阅。使用最终 HTTPS
+          地址；不接受登录凭据或跳转地址。
+        </p>
+        <div class="row">
+          <label for="sources">选择订阅</label
+          ><select id="sources" aria-label="选择订阅"></select
+          ><button id="refresh" type="button">读取最新内容</button
+          ><button id="remove" type="button" class="quiet">移除订阅</button>
+        </div>
+      </section>
+      <div class="workspace">
+        <section class="panel" aria-labelledby="entries-title">
+          <h2 id="entries-title">订阅内容</h2>
+          <p class="hint">每次显示最新一批内容；摘要源保留摘要与原文链接。</p>
+          <div id="entries">添加订阅后点击“读取最新内容”。</div>
+        </section>
+        <section class="panel preview-panel" aria-labelledby="preview-title">
+          <h2 id="preview-title">图文预览</h2>
+          <p id="preview-empty" class="hint">
+            选择一篇内容，核对文字、图片与出处。
+          </p>
+          <div id="preview" hidden>
+            <h3 id="entry-title"></h3>
+            <p id="entry-meta" class="hint"></p>
+            <p id="entry-source" class="source"></p>
+            <div class="row">
+              <button id="load-images" type="button" class="quiet">
+                加载预览图片</button
+              ><button id="compose" type="button">导入图文并编辑发布</button>
+            </div>
+            <p class="hint">
+              导入时图片会尝试转存到你的站内空间。请确认有权转载，并在编辑器中检查图片、选择版块后发布。
+            </p>
+            <article id="entry-body" class="article"></article>
+          </div>
+        </section>
+      </div>
+    </main>
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

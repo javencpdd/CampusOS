@@ -48,6 +48,19 @@ function ready(wrapper: ReturnType<typeof mount>, origin = identity.origin) {
   )
   return post.mock.calls[0]?.[0]?.challenge
 }
+it('binds an opaque frame to its window and challenge without same-origin permissions', async () => {
+  const wrapper = opened()
+  await wrapper.setProps({
+    identity: { ...identity, origin: window.location.origin, opaque: true },
+    src: window.location.origin + '/api/v1/plugin-v5/ui-assets/' + 'a'.repeat(32) + '/dist/user/index.html',
+  })
+  expect(wrapper.get('iframe').attributes('sandbox')).toBe('allow-scripts')
+  expect(ready(wrapper)).toBeUndefined()
+  expect(ready(wrapper, 'null')).toBeTruthy()
+  expect(fixture.channels).toHaveLength(1)
+  const iframe = wrapper.get('iframe').element as HTMLIFrameElement
+  expect(vi.mocked(iframe.contentWindow!.postMessage).mock.calls.at(-1)?.[1]).toBe('*')
+})
 beforeEach(() => {
   vi.useFakeTimers()
   fixture.token = 'owned-session'

@@ -9,6 +9,7 @@ type V5UIArtifact struct {
 	Audience   string `json:"audience"`
 	Entrypoint string `json:"entrypoint"`
 	Digest     string `json:"digest"`
+	Isolation  string `json:"isolation,omitempty"`
 }
 type V5BackendArtifact struct {
 	Kind   string `json:"kind"`

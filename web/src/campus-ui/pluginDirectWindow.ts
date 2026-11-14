@@ -59,7 +59,7 @@ export function windowsDirectWindowFile(
       ...candidates.map((path) => `if not defined CAMPUSOS_BROWSER if exist "${path}" set "CAMPUSOS_BROWSER=${path}"`),
       'if not defined CAMPUSOS_BROWSER goto missing_browser',
       `echo Opening CampusOS: ${site}`,
-      'echo Sign in again in this dedicated window. Pair the RSS helper with that session.',
+      'echo Sign in again in this dedicated browser window.',
       `start "" "%CAMPUSOS_BROWSER%" "--user-data-dir=%LOCALAPPDATA%\\CampusOS\\DirectBrowser\\${profile}" "--host-resolver-rules=MAP *.${domain} ${ip}" --no-proxy-server --no-first-run --no-default-browser-check --new-window "${site}"`,
       'exit /b',
       ':missing_browser',

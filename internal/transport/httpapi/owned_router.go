@@ -241,6 +241,14 @@ func (g *ownedGroup) handle(method, path string, handlers ...gin.HandlerFunc) {
 			descriptor.Audit = "required-command+outbox"
 		}
 	}
+	if operation == "http.plugin.v5.user.ui_action" {
+		descriptor.Auth = "jwt+current-user-session+current-ui-proof+package-grant+user-consent+browser-csrf"
+		descriptor.Audit = "request-log-no-content"
+	}
+	if operation == "http.plugin.v5.ui_asset" {
+		descriptor.Auth = "opaque-ui-lease+current-user-or-admin-session"
+		descriptor.Audit = "request-log-no-content"
+	}
 	if strings.HasPrefix(operation, "http.knowledge.") {
 		descriptor.Auth = "none+current-origin-policy"
 		descriptor.Audit = "none"

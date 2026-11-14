@@ -325,6 +325,9 @@
         },
         "digest": {
           "$ref": "#/definitions/digest"
+        },
+        "isolation": {
+          "const": "opaque"
         }
       }
     },

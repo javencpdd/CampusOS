@@ -16,6 +16,7 @@ import (
 	platformfeature "github.com/campusos/CampusOS/internal/platform/feature"
 	platformmodule "github.com/campusos/CampusOS/internal/platform/module"
 	"github.com/campusos/CampusOS/internal/platform/reliability"
+	"github.com/campusos/CampusOS/internal/platform/security"
 	"github.com/campusos/CampusOS/internal/plugin"
 	plugincontainer "github.com/campusos/CampusOS/internal/plugin/container"
 	plugingrpc "github.com/campusos/CampusOS/internal/plugin/grpc"
@@ -298,9 +299,21 @@ func (m *pluginPlatformModule) Start(ctx context.Context) error {
 	m.platform = plugin.NewV5Platform(m.stateStore, m.files, m.catalog, reliable, admins)
 	users, _ := m.app.Lookup("identity.user-reader")
 	m.platform.Users, _ = users.(identityport.UserReader)
-	m.v5Handler = &plugin.V5HTTPHandler{Platform: m.platform}
-	if m.owner.cfg.Plugin.UIListen != "" || m.owner.cfg.Plugin.UIOrigin != "" {
-		if m.owner.cfg.Plugin.UIListen == "" {
+	m.v5Handler = &plugin.V5HTTPHandler{Platform: m.platform, ValidatePublicImage: func(raw []byte) ([]byte, string, error) {
+		image, err := corestorage.OptimizeImageWithin(raw, 1280)
+		if err != nil {
+			return nil, "", err
+		}
+		return image.Data, image.MimeType, nil
+	}}
+	proxies, err := security.NewProxyRegistry(m.owner.cfg.Plugin.WebProxyProfiles)
+	if err != nil || !proxies.Has(m.owner.cfg.Plugin.WebProxyProfile) {
+		return errors.New("plugin web proxy profiles configuration is invalid")
+	}
+	m.v5Handler.WebProxies = proxies
+	m.v5Handler.WebProxyProfile = m.owner.cfg.Plugin.WebProxyProfile
+	if m.owner.cfg.Plugin.UIListen != "" || m.owner.cfg.Plugin.UIOrigin != "" || len(m.owner.cfg.Plugin.UIParents) > 0 {
+		if m.owner.cfg.Plugin.UIOrigin != "" && m.owner.cfg.Plugin.UIListen == "" {
 			return errors.New("plugin UI requires a dedicated listener")
 		}
 		m.owner.pluginUI, err = plugin.NewV5UIHost(m.platform, m.owner.cfg.Plugin.UIOrigin, m.owner.cfg.Plugin.UIParents)

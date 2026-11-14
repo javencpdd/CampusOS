@@ -19,6 +19,7 @@ var errV5Replay = errors.New("internal v5 operation replay")
 // Mutation carries intent only. Principal, owner, current grant, desired state,
 // lease and observed health are always supplied/reloaded by the host.
 type V5Mutation struct {
+	UIProof            string                     `json:"-"`
 	Kind               string                     `json:"kind"`
 	Version            string                     `json:"version"`
 	ExpectedGeneration int64                      `json:"expected_generation,string"`
@@ -371,6 +372,9 @@ func (s *V5Platform) validateInstanceConfiguration(ctx context.Context, c V5Coor
 	return nil
 }
 func v5MutationValid(r V5Mutation, admin bool) bool {
+	if r.UIProof != "" && (admin || r.Kind != "configure" || r.ConfigurationPart != "values" || !v5Digest(r.UIProof)) {
+		return false
+	}
 	if r.ExpiresAtMS < 0 || r.ExpiresAtMS != 0 && (!admin || r.Kind != "grant") {
 		return false
 	}
@@ -465,6 +469,9 @@ func (s *V5Platform) Mutate(ctx context.Context, publisher, key string, r V5Muta
 	}
 	raw, _ := json.Marshal(r)
 	hash := v5BytesDigest(raw)
+	if r.UIProof != "" {
+		hash = v5BytesDigest(append(append(raw, 0), []byte(r.UIProof)...))
+	}
 	changed := false
 	defer func() {
 		if err == nil && changed && result.Generation > 0 {
@@ -476,6 +483,11 @@ func (s *V5Platform) Mutate(ctx context.Context, publisher, key string, r V5Muta
 	apply := func(m *PluginV5Manifest) error {
 		var e error
 		result, e = s.command(ctx, a, c, owner, r, hash, resolve, func(tx context.Context, op *V5Operation) error {
+			if r.UIProof != "" {
+				if err := s.checkConfigurationUI(tx, c, a, r.UIProof, m); err != nil {
+					return err
+				}
+			}
 			changed = true
 			return s.apply(tx, c, owner, r, m, op)
 		})

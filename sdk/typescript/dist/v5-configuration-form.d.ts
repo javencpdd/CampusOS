@@ -1,3 +1,4 @@
+import type { PluginV5UiArtifact } from "./plugin-v5-package-shape.js";
 import { ExactJSONNumber } from "./exact-json";
 export type ConfigValue = string | boolean | number | ExactJSONNumber;
 export interface ConfigField {
@@ -22,6 +23,7 @@ export interface ConfigEntry {
             api_version: string;
             display_name?: string;
             runtime?: string;
+            ui?: PluginV5UiArtifact[];
             consumes?: any[];
             host_resources?: any;
             data: {
@@ -48,6 +50,13 @@ export interface ConfigEntry {
     grant?: any;
     consent?: any;
     purpose_hash?: string;
+    site_state?: {
+        installed: boolean;
+        enabled: boolean;
+        ready: boolean;
+        observed: string;
+        error_code?: string;
+    };
 }
 export interface ConfigOptions {
     profiles: Array<{

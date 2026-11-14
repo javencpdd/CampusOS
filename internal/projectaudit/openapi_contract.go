@@ -14,6 +14,8 @@ type operationProfile struct {
 }
 
 var operationProfiles = map[string]operationProfile{
+	"pluginV5Handler.UIAction":             {RequestSchema: "PluginV5UIActionRequest", ResponseSchema: "PluginV5UIActionResult", AdditionalErrors: []string{"400", "401", "403", "409", "503"}},
+	"pluginV5Handler.OpaqueUIAsset":        {NoBody: true, ResponseContentType: "application/octet-stream", AdditionalErrors: []string{"404"}},
 	"pluginV5Handler.Inventory":            {ResponseSchema: "PluginV5Inventory", NoBody: true, AdditionalErrors: []string{"401", "403", "409", "503"}},
 	"pluginV5Handler.Detail":               {ResponseSchema: "PluginV5InventoryEntry", NoBody: true, AdditionalErrors: []string{"401", "403", "404", "409", "503"}},
 	"pluginV5Handler.Operation":            {ResponseSchema: "PluginV5Operation", NoBody: true, AdditionalErrors: []string{"401", "403", "404", "503"}},
@@ -274,7 +276,7 @@ func openAPIComponents() string {
       name: Authorization
       description: "Integration cint1_<selector>.<secret>; independent of JWT and ApiKey."
   schemas:
-` + integrationOpenAPISchemas() + knowledgeOpenAPISchemas() + aiOpenAPISchemas() + v5InstallationOpenAPISchemas() + `    EmptyObject:
+` + integrationOpenAPISchemas() + knowledgeOpenAPISchemas() + aiOpenAPISchemas() + v5UIActionsOpenAPISchemas() + v5InstallationOpenAPISchemas() + `    EmptyObject:
       type: object
       additionalProperties: false
     AdminDomainLoginRequest:

@@ -44,8 +44,8 @@ type egressDialer interface {
 }
 
 // EgressBroker enforces one host-owned policy at URL, redirect, DNS, dial,
-// transport, and response boundaries. Production construction does not allow
-// callers to replace the resolver, dialer, or TLS verification configuration.
+// transport, and response boundaries. Operator-approved proxy profiles may
+// tunnel only prevalidated public IPs; callers cannot replace DNS or TLS policy.
 type EgressBroker struct {
 	limits    egressLimits
 	resolver  egressResolver

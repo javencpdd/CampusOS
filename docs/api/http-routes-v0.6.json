@@ -478,6 +478,23 @@
       "stability": "experimental"
     },
     {
+      "method": "GET",
+      "path": "/api/v1/plugin-v5/ui-assets/:lease/*asset",
+      "handler": "pluginV5Handler.OpaqueUIAsset",
+      "module_owner": "core.plugin-platform",
+      "audience": "public",
+      "auth": "opaque-ui-lease+current-user-or-admin-session",
+      "operation_code": "http.plugin.v5.ui_asset",
+      "legacy_aliases": [
+        "http.get.api.v1.plugin_v5.ui_assets.lease.wildcardasset",
+        "httpapi.get.api.v1.plugin_v5.ui_assets.lease.wildcardasset"
+      ],
+      "ownership": "lease-derived-session-plugin",
+      "scope": "immutable-opaque-ui-assets",
+      "audit": "request-log-no-content",
+      "stability": "experimental"
+    },
+    {
       "method": "POST",
       "path": "/api/v1/auth/admin/login",
       "handler": "userHandler.AdminLogin",
@@ -1495,6 +1512,23 @@
       "ownership": "handler-enforced",
       "scope": "self-or-resource-owner",
       "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/plugin-v5/:publisher/:key/:version/ui-actions",
+      "handler": "pluginV5Handler.UIAction",
+      "module_owner": "core.plugin-platform",
+      "audience": "authenticated",
+      "auth": "jwt+current-user-session+current-ui-proof+package-grant+user-consent+browser-csrf",
+      "operation_code": "http.plugin.v5.user.ui_action",
+      "legacy_aliases": [
+        "http.post.api.v1.plugin_v5.publisher.key.version.ui_actions",
+        "httpapi.post.api.v1.plugin_v5.publisher.key.version.ui_actions"
+      ],
+      "ownership": "current-user-derived",
+      "scope": "published-ui-capability-self",
+      "audit": "request-log-no-content",
       "stability": "experimental"
     },
     {

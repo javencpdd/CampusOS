@@ -1,0 +1,113 @@
+{
+  "api_version": "campusos.plugin/v5",
+  "publisher": "campusos",
+  "key": "rss-publisher",
+  "version": "2.0.0",
+  "host_contracts": [
+    "campusos.host/v1"
+  ],
+  "runtime": "none",
+  "consumes": [
+    {
+      "capability": "ui.surface.open",
+      "scope": {
+        "kind": "self"
+      },
+      "purpose": "Open my isolated RSS subscription interface",
+      "required": true
+    },
+    {
+      "capability": "web.public.read",
+      "scope": {
+        "kind": "self"
+      },
+      "purpose": "Read public HTTPS feed documents and selected images through the bounded host broker, without cookies, credentials or private network access",
+      "required": true
+    },
+    {
+      "capability": "community.article.compose",
+      "scope": {
+        "kind": "self"
+      },
+      "purpose": "Import my explicitly selected feed item into the host article editor; publish only after my confirmation",
+      "required": true
+    }
+  ],
+  "provides": [],
+  "configuration": {
+    "contract": "campusos.plugin-config/v1",
+    "version": "v1",
+    "schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "feed_1": {
+          "type": "string",
+          "title": "订阅地址 1",
+          "maxLength": 512
+        },
+        "feed_2": {
+          "type": "string",
+          "title": "订阅地址 2",
+          "maxLength": 512
+        },
+        "feed_3": {
+          "type": "string",
+          "title": "订阅地址 3",
+          "maxLength": 512
+        },
+        "feed_4": {
+          "type": "string",
+          "title": "订阅地址 4",
+          "maxLength": 512
+        },
+        "feed_5": {
+          "type": "string",
+          "title": "订阅地址 5",
+          "maxLength": 512
+        },
+        "feed_6": {
+          "type": "string",
+          "title": "订阅地址 6",
+          "maxLength": 512
+        }
+      },
+      "required": [
+        "feed_1",
+        "feed_2",
+        "feed_3",
+        "feed_4",
+        "feed_5",
+        "feed_6"
+      ]
+    },
+    "defaults": {
+      "feed_1": "",
+      "feed_2": "",
+      "feed_3": "",
+      "feed_4": "",
+      "feed_5": "",
+      "feed_6": ""
+    },
+    "selectors": [],
+    "secret_names": []
+  },
+  "data": {
+    "config_scope": "user",
+    "private_kv_bytes": 0,
+    "private_object_bytes": 0,
+    "upgrade": {
+      "schema_version": 1,
+      "mode": "preserve",
+      "rollback": "snapshot"
+    }
+  },
+  "ui": [
+    {
+      "audience": "user",
+      "entrypoint": "dist/user/index.html",
+      "digest": "sha256:e16c14bb2bdd36efe4cc56c935319001851e41f2e1b7d1007f376c1aaa49add7",
+      "isolation": "opaque"
+    }
+  ]
+}

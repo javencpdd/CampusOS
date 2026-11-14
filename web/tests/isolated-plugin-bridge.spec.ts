@@ -7,6 +7,7 @@ import {
   validFrameIdentity,
   dispatchPluginBridgeRequest,
   createPluginBridgeSession,
+  PluginBridgePublicError,
   type PluginFrameIdentity,
 } from '@/campus-ui/isolatedPluginBridge'
 
@@ -71,6 +72,35 @@ describe('isolatedPluginBridge', () => {
       }),
     ).toBeUndefined()
   })
+})
+
+it('only exposes fixed host-selected failure messages and keeps raw failures private', async () => {
+  for (const typed of [false, true]) {
+    const port = { postMessage: vi.fn(), close: vi.fn(), onmessage: null }
+    const session = createPluginBridgeSession(identity, 'challenge', { port1: port, port2: port })
+    session.active = true
+    const error = typed
+      ? new PluginBridgePublicError('bridge.unavailable')
+      : new Error('private source URL and credential')
+    error.message = 'private source URL and credential'
+    await dispatchPluginBridgeRequest(
+      session,
+      {
+        version: PLUGIN_BRIDGE_VERSION,
+        request_id: 'read',
+        method: 'web.read',
+        params: { url: 'https://example.test/data', kind: 'document' },
+      },
+      () => true,
+      vi.fn().mockRejectedValue(error),
+      new Set(),
+      { count: 0 },
+    )
+    const message = port.postMessage.mock.calls[0][0]
+    expect(message.error.code).toBe(typed ? 'bridge.unavailable' : 'bridge.denied')
+    expect(message.error.message).not.toContain('private')
+    if (typed) expect(message.error.message).toContain('请求超时')
+  }
 })
 
 it('discards late private results after port replacement, revocation and closure', async () => {

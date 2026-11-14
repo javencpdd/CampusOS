@@ -34,6 +34,7 @@
 | `POST` | `/api/v1/auth/registration/verify` | `http.post.api.v1.auth.registration.verify` | `core.identity` | `userHandler.VerifyRegistrationChallenge` | `none` | `-` | `none` | `public` | `request-log` |
 | `POST` | `/api/v1/auth/register` | `http.post.api.v1.auth.register` | `core.identity` | `userHandler.Register` | `none` | `-` | `none` | `public` | `request-log` |
 | `POST` | `/api/v1/auth/login` | `http.post.api.v1.auth.login` | `core.identity` | `userHandler.Login` | `none` | `-` | `none` | `public` | `request-log` |
+| `GET` | `/api/v1/plugin-v5/ui-assets/:lease/*asset` | `http.plugin.v5.ui_asset` | `core.plugin-platform` | `pluginV5Handler.OpaqueUIAsset` | `opaque-ui-lease+current-user-or-admin-session` | `-` | `lease-derived-session-plugin` | `immutable-opaque-ui-assets` | `request-log-no-content` |
 | `POST` | `/api/v1/auth/admin/login` | `http.post.api.v1.auth.admin.login` | `core.identity` | `userHandler.AdminLogin` | `none` | `-` | `none` | `public` | `request-log` |
 | `POST` | `/api/v1/admin/identity/login` | `http.identity.admin_session.login` | `core.identity` | `d.Identity.AdminDomain.Login` | `none` | `-` | `none` | `public` | `required-command+outbox` |
 | `POST` | `/api/v1/admin/identity/refresh` | `http.identity.admin_session.refresh` | `core.identity` | `d.Identity.AdminDomain.Refresh` | `admin-refresh-cookie+csrf` | `-` | `current-admin-session` | `admin-refresh-family` | `required-command+outbox` |
@@ -94,6 +95,7 @@
 | `POST` | `/api/v1/auth/email-binding/verify` | `http.post.api.v1.auth.email_binding.verify` | `core.identity` | `userHandler.VerifyEmailBinding` | `jwt+csrf` | `-` | `current-session` | `self` | `identity-recovery-audit` |
 | `POST` | `/api/v1/auth/email-binding/complete` | `http.post.api.v1.auth.email_binding.complete` | `core.identity` | `userHandler.CompleteEmailBinding` | `jwt+csrf` | `-` | `current-session` | `self` | `identity-recovery-audit` |
 | `GET` | `/api/v1/auth/me` | `http.get.api.v1.auth.me` | `core.identity` | `userHandler.GetMe` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log-read` |
+| `POST` | `/api/v1/plugin-v5/:publisher/:key/:version/ui-actions` | `http.plugin.v5.user.ui_action` | `core.plugin-platform` | `pluginV5Handler.UIAction` | `jwt+current-user-session+current-ui-proof+package-grant+user-consent+browser-csrf` | `-` | `current-user-derived` | `published-ui-capability-self` | `request-log-no-content` |
 | `PUT` | `/api/v1/users/:id` | `http.put.api.v1.users.id` | `core.identity` | `userHandler.UpdateUser` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
 | `GET` | `/api/v1/spaces/me` | `http.personal_space.owner_profile.read` | `feature.personal-space` | `spaceHandler.GetMe` | `jwt+current-session` | `-` | `resource-policy` | `actual-owned-space+current-user` | `none` |
 | `GET` | `/api/v1/spaces/me/contents` | `http.personal_space.owner_contents.read` | `feature.personal-space` | `spaceHandler.ListOwnContents` | `jwt+current-session` | `-` | `resource-policy` | `actual-owned-space+current-user` | `none` |

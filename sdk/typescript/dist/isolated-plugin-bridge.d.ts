@@ -8,11 +8,12 @@ export interface PluginFrameIdentity {
     surfaceID: string;
     audience: PluginAudience;
     origin: string;
+    opaque?: boolean;
 }
 export interface PluginBridgeRequest {
     version: typeof PLUGIN_BRIDGE_VERSION;
     request_id: string;
-    method: "config.read" | "config.update" | "resource.describe" | "resource.readRange" | "backend.invoke" | "ui.requestSurface" | "records.read" | "records.write";
+    method: "config.read" | "config.update" | "resource.describe" | "resource.readRange" | "backend.invoke" | "ui.requestSurface" | "records.read" | "records.write" | "web.read" | "editor.article.import";
     params: Record<string, unknown>;
 }
 export interface PluginBridgeResponse {
@@ -23,6 +24,15 @@ export interface PluginBridgeResponse {
         code: string;
         message: string;
     };
+}
+declare const publicFailureMessages: {
+    readonly "bridge.unavailable": "服务暂时不可用或请求超时，请稍后重试。";
+    readonly "bridge.invalid_source": "资源地址或返回内容不符合要求，请检查公开 HTTPS 地址。";
+    readonly "bridge.context_changed": "配置或内容已更新，请重新读取或重新打开插件。";
+};
+export declare class PluginBridgePublicError extends Error {
+    readonly code: keyof typeof publicFailureMessages;
+    constructor(code: keyof typeof publicFailureMessages);
 }
 export interface PluginBridgeReady {
     type: "campusos.bridge.ready";
@@ -76,3 +86,4 @@ export declare function dispatchPluginBridgeRequest(session: PluginBridgeSession
 export declare function pluginBridgeError(requestID: string, code: string, message: string): PluginBridgeResponse;
 export declare function pluginBridgeResult(requestID: string, result: unknown): PluginBridgeResponse;
 export declare function pluginBridgeTransferables(result: unknown): Transferable[];
+export {};

@@ -455,13 +455,13 @@ func OpenAPI(routes []RouteContract) []byte {
 			fmt.Fprintf(&out, "      x-campusos-module-owner: %s\n", route.ModuleOwner)
 			fmt.Fprintf(&out, "      x-campusos-scope: %s\n", route.Scope)
 			fmt.Fprintf(&out, "      x-campusos-operation: %s\n", route.OperationCode)
-			if strings.Contains(route.Auth, "admin-account") || strings.Contains(route.Auth, "current-admin-session") || strings.HasPrefix(route.OperationCode, "http.knowledge.private.") || route.Audience == "integration" || strings.Contains(route.OperationCode, "http.identity.admin_") || route.Auth == "none+current-origin-policy" {
+			if strings.Contains(route.Auth, "opaque-ui-lease") || strings.Contains(route.Auth, "admin-account") || strings.Contains(route.Auth, "current-admin-session") || strings.HasPrefix(route.OperationCode, "http.knowledge.private.") || route.Audience == "integration" || strings.Contains(route.OperationCode, "http.identity.admin_") || route.Auth == "none+current-origin-policy" {
 				fmt.Fprintf(&out, "      x-campusos-auth: %s\n", route.Auth)
 			}
 			if route.PermissionCode != "" {
 				fmt.Fprintf(&out, "      x-campusos-permission: %s\n", route.PermissionCode)
 			}
-			authenticated := route.Auth != "none" && route.Auth != "none+current-origin-policy"
+			authenticated := route.Auth != "none" && route.Auth != "none+current-origin-policy" && !strings.HasPrefix(route.Auth, "opaque-ui-lease")
 			if authenticated {
 				if route.Auth == "admin-refresh-cookie+csrf" {
 					out.WriteString("      security:\n        - adminRefreshCookie: []\n")
@@ -491,6 +491,9 @@ func OpenAPI(routes []RouteContract) []byte {
 					out.WriteString("        - name: page_size\n          in: query\n          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }\n")
 				}
 				out.WriteString(knowledgeQuery)
+				if route.OperationCode == "http.plugin.v5.user.command" {
+					out.WriteString("        - name: X-Plugin-UI-Proof\n          in: header\n          required: false\n          description: Delegated iframe configuration writes must supply the current UI proof, rechecked inside the family-locked configure transaction. Native user configuration omits this header.\n          schema: {type: string, pattern: '^sha256:[a-f0-9]{64}$'}\n")
+				}
 				if requiresAdminCSRF {
 					out.WriteString("        - name: X-Admin-CSRF-Token\n          in: header\n          required: false\n          description: Required for browser/cookie requests; CLI body refresh requires explicit server compatibility configuration.\n          schema: {type: string}\n")
 				}
@@ -626,6 +629,19 @@ func FindRepositoryRoot(start string) (string, error) {
 // Explicit governance metadata follows operation extraction and scope parsing;
 // execution grants do not imply the generic authenticated owner rule.
 func applyResourceGovernanceContract(route *RouteContract) {
+	if route.OperationCode == "http.plugin.v5.user.ui_action" {
+		route.Auth = "jwt+current-user-session+current-ui-proof+package-grant+user-consent+browser-csrf"
+		route.Scope = "published-ui-capability-self"
+		route.Ownership = "current-user-derived"
+		route.Audit = "request-log-no-content"
+	}
+	if route.OperationCode == "http.plugin.v5.ui_asset" {
+		route.Auth = "opaque-ui-lease+current-user-or-admin-session"
+		route.Scope = "immutable-opaque-ui-assets"
+		route.Ownership = "lease-derived-session-plugin"
+		route.Audit = "request-log-no-content"
+	}
+
 	if strings.HasPrefix(route.OperationCode, "http.ai.") {
 		route.Auth = "jwt+current-admin-session+permission"
 		route.Scope = "ai.profile_inventory/all"

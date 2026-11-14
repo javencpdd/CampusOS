@@ -9,6 +9,7 @@ import (
 	"strconv"
 
 	identity "github.com/campusos/CampusOS/internal/modules/core/identity/port"
+	"github.com/campusos/CampusOS/internal/platform/security"
 	"github.com/campusos/CampusOS/pkg/apperror"
 	"github.com/campusos/CampusOS/pkg/auth"
 	"github.com/campusos/CampusOS/pkg/response"
@@ -16,11 +17,15 @@ import (
 )
 
 type V5HTTPHandler struct {
-	Platform      *V5Platform
-	UIHost        *V5UIHost
-	AdminSessions identity.AdminSessionAuthorityReader
-	UserSessions  identity.SessionVerifier
-	UserStrength  identity.SessionStrengthReader
+	WebProxies          *security.ProxyRegistry
+	WebProxyProfile     string
+	ValidatePublicImage func([]byte) ([]byte, string, error)
+	publicRead          func(context.Context, string, int64) ([]byte, string, error)
+	Platform            *V5Platform
+	UIHost              *V5UIHost
+	AdminSessions       identity.AdminSessionAuthorityReader
+	UserSessions        identity.SessionVerifier
+	UserStrength        identity.SessionStrengthReader
 }
 
 func (h *V5HTTPHandler) resolver(c *gin.Context, admin bool) identity.SessionPrincipalResolver {
@@ -193,6 +198,7 @@ func (h *V5HTTPHandler) Mutate(admin bool) gin.HandlerFunc {
 			v5HTTPError(c, ErrV5Invalid)
 			return
 		}
+		request.UIProof = c.GetHeader("X-Plugin-UI-Proof")
 		op, err := h.Platform.Mutate(c.Request.Context(), c.Param("publisher"), c.Param("key"), request, admin, h.resolver(c, admin))
 		if err != nil {
 			v5HTTPError(c, err)

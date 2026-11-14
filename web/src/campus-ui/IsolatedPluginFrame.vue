@@ -6,7 +6,7 @@
       :key="frameKey"
       :src="src"
       :title="title"
-      sandbox="allow-scripts allow-same-origin"
+      :sandbox="identity.opaque ? 'allow-scripts' : 'allow-scripts allow-same-origin'"
       referrerpolicy="no-referrer"
       @load="onLoad"
       @error="onError"
@@ -17,10 +17,7 @@
       <code>{{ identity.origin }}</code>
       <el-button type="primary" @click="retry">重新加载插件界面</el-button>
       <template v-if="directWindow">
-        <p>
-          Windows
-          若能访问本站IP、但打不开上方域名，可下载并双击直连启动器。在独立窗口登录后重新打开插件；RSS本机助手需在该窗口重新配对。
-        </p>
+        <p>Windows 若能访问本站IP、但打不开上方域名，可下载并双击直连启动器。在独立窗口登录后重新打开插件。</p>
         <el-button @click="downloadDirectWindow">下载 Windows 直连启动器</el-button>
       </template>
     </div>
@@ -47,7 +44,7 @@ const props = defineProps<{
   identity: PluginFrameIdentity
   src: string
   title: string
-  request: (request: PluginBridgeRequest) => Promise<unknown>
+  request: (request: PluginBridgeRequest, active?: () => boolean) => Promise<unknown>
 }>()
 
 const frame = ref<HTMLIFrameElement>()
@@ -59,7 +56,9 @@ const state = ref<'connecting' | 'ready' | 'blocked' | 'unavailable'>(
 )
 const frameKey = computed(() => JSON.stringify([props.identity, props.src, attempt.value]))
 const directWindow = computed(() =>
-  windowsDirectWindowFile(window.location.origin, props.identity.origin, window.location.pathname),
+  props.identity.opaque
+    ? undefined
+    : windowsDirectWindowFile(window.location.origin, props.identity.origin, window.location.pathname),
 )
 const message = computed(() => {
   if (state.value === 'blocked') return '插件界面未通过隔离连接校验，已阻止加载。'
@@ -130,7 +129,11 @@ function newChallenge(): string {
 
 function sourceMatchesIdentity(): boolean {
   try {
-    return new URL(props.src).origin === props.identity.origin
+    const url = new URL(props.src)
+    return (
+      url.origin === props.identity.origin &&
+      (!props.identity.opaque || /^\/api\/v1\/plugin-v5\/ui-assets\/[a-f0-9]{32}\/dist\//.test(url.pathname))
+    )
   } catch {
     return false
   }
@@ -141,7 +144,7 @@ function onWindowMessage(event: MessageEvent<unknown>) {
   if (
     !iframeWindow ||
     event.source !== iframeWindow ||
-    event.origin !== props.identity.origin ||
+    event.origin !== (props.identity.opaque ? 'null' : props.identity.origin) ||
     !validFrameIdentity(props.identity, window.location.origin) ||
     !sourceMatchesIdentity() ||
     !isMatchingReady(event.data, props.identity)
@@ -189,7 +192,7 @@ function onWindowMessage(event: MessageEvent<unknown>) {
       surface_id: props.identity.surfaceID,
       audience: props.identity.audience,
     },
-    props.identity.origin,
+    props.identity.opaque ? '*' : props.identity.origin,
     [channel.port2],
   )
 }
@@ -198,7 +201,7 @@ async function handlePortMessage(
   connected: PluginBridgeSession,
   event: MessageEvent<unknown>,
   current: () => boolean,
-  handler: (request: PluginBridgeRequest) => Promise<unknown>,
+  handler: (request: PluginBridgeRequest, active?: () => boolean) => Promise<unknown>,
   seen: Set<string>,
   budget: { count: number },
 ) {
@@ -213,7 +216,14 @@ async function handlePortMessage(
     state.value = 'ready'
     return
   }
-  await dispatchPluginBridgeRequest(connected, event.data, current, handler, seen, budget)
+  await dispatchPluginBridgeRequest(
+    connected,
+    event.data,
+    current,
+    (request) => handler(request, () => connected.active && current()),
+    seen,
+    budget,
+  )
 }
 function onLoad(event: Event) {
   if (event.target !== frame.value) return

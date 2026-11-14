@@ -20,7 +20,7 @@ func (s *Server) serveHTTP(router http.Handler) error {
 	}
 	serverErrors := make(chan error, 2)
 	var uiServer *http.Server
-	if s.pluginUI != nil {
+	if s.pluginUI != nil && s.cfg.Plugin.UIListen != "" {
 		uiServer = &http.Server{Addr: s.cfg.Plugin.UIListen, Handler: s.pluginUI, ReadHeaderTimeout: 10 * time.Second, ReadTimeout: 10 * time.Second, WriteTimeout: 30 * time.Second, IdleTimeout: 30 * time.Second, MaxHeaderBytes: 16 << 10}
 		defer uiServer.Close()
 		go func() { serverErrors <- uiServer.ListenAndServe() }()

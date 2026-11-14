@@ -10,6 +10,7 @@ export interface PluginFrameIdentity {
   surfaceID: string;
   audience: PluginAudience;
   origin: string;
+  opaque?: boolean;
 }
 
 export interface PluginBridgeRequest {
@@ -23,7 +24,9 @@ export interface PluginBridgeRequest {
     | "backend.invoke"
     | "ui.requestSurface"
     | "records.read"
-    | "records.write";
+    | "records.write"
+    | "web.read"
+    | "editor.article.import";
   params: Record<string, unknown>;
 }
 
@@ -32,6 +35,22 @@ export interface PluginBridgeResponse {
   request_id: string;
   result?: unknown;
   error?: { code: string; message: string };
+}
+
+const publicFailureMessages = {
+  "bridge.unavailable": "服务暂时不可用或请求超时，请稍后重试。",
+  "bridge.invalid_source":
+    "资源地址或返回内容不符合要求，请检查公开 HTTPS 地址。",
+  "bridge.context_changed": "配置或内容已更新，请重新读取或重新打开插件。",
+} as const;
+
+// Only host-selected, fixed messages may cross the iframe boundary. Raw API,
+// transport and source errors can contain URLs or other private details.
+export class PluginBridgePublicError extends Error {
+  constructor(readonly code: keyof typeof publicFailureMessages) {
+    super(publicFailureMessages[code]);
+    this.name = "PluginBridgePublicError";
+  }
 }
 
 export interface PluginBridgeReady {
@@ -90,6 +109,8 @@ const allowedMethods = new Set<PluginBridgeRequest["method"]>([
   "ui.requestSurface",
   "records.read",
   "records.write",
+  "web.read",
+  "editor.article.import",
 ]);
 
 export function normalizePluginOrigin(value: string): string | undefined {
@@ -108,7 +129,10 @@ export function validFrameIdentity(
   const origin = normalizePluginOrigin(identity.origin);
   return Boolean(
     origin &&
-    origin !== normalizePluginOrigin(hostOrigin) &&
+    (identity.opaque === undefined || typeof identity.opaque === "boolean") &&
+    (identity.opaque
+      ? origin === normalizePluginOrigin(hostOrigin)
+      : origin !== normalizePluginOrigin(hostOrigin)) &&
     /^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)+$/.test(identity.pluginKey) &&
     identity.pluginVersion.length > 0 &&
     /^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*$/.test(identity.surfaceID) &&
@@ -260,7 +284,10 @@ export async function dispatchPluginBridgeRequest(
     const result = await Promise.race([
       execute(request),
       new Promise<never>((_, reject) => {
-        timeout = setTimeout(() => reject(new Error("timeout")), 30000);
+        timeout = setTimeout(
+          () => reject(new Error("timeout")),
+          request.method === "editor.article.import" ? 180000 : 30000,
+        );
       }),
     ]);
     if (session.active && current())
@@ -268,13 +295,17 @@ export async function dispatchPluginBridgeRequest(
         pluginBridgeResult(request.request_id, result),
         pluginBridgeTransferables(result),
       );
-  } catch {
+  } catch (error) {
     if (session.active && current())
       session.port.postMessage(
         pluginBridgeError(
           request.request_id,
-          "bridge.denied",
-          "当前操作未获授权或资源已不可用。",
+          error instanceof PluginBridgePublicError
+            ? error.code
+            : "bridge.denied",
+          error instanceof PluginBridgePublicError
+            ? publicFailureMessages[error.code]
+            : "当前操作未获授权或资源已不可用。",
         ),
       );
   } finally {

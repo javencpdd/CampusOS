@@ -96,10 +96,10 @@ try {
   const command = async (kind, extra = {}) => {
     const response = await context.request.post(family + '/commands', {
       headers,
-      data: { kind, version: '1.0.0', idempotency_key: crypto.randomUUID(), ...extra },
+      data: { kind, version: '2.0.0', idempotency_key: crypto.randomUUID(), ...extra },
     })
     assert.equal(response.status(), 200, `owned plugin command: ${kind}`)
-    const detail = await context.request.get(family + '/1.0.0', { headers })
+    const detail = await context.request.get(family + '/2.0.0', { headers })
     assert.equal(detail.status(), 200)
     return (await detail.json()).data
   }
@@ -127,7 +127,7 @@ try {
   await page.goto(base + '/plugins')
   await page
     .getByRole('navigation', { name: '可用插件' })
-    .locator('[data-coordinate="campusos/rss-publisher@1.0.0"]')
+    .locator('[data-coordinate="campusos/rss-publisher@2.0.0"]')
     .click()
   await page.getByRole('button', { name: '安装到我的账号', exact: true }).click()
   await page.getByLabel('我已了解以上用途，同意此版本在宿主权限内处理我的数据').check()

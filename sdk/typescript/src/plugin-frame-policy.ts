@@ -5,15 +5,17 @@ export function installPluginFramePolicy(
   source: string,
   document: Document = globalThis.document,
 ): void {
-  if (source !== "'none'") {
+  if (typeof source !== "string") throw new Error("插件隔离域策略无效。");
+  const remote = source.startsWith("'self' ") ? source.slice(7) : source;
+  if (source !== "'none'" && source !== "'self'") {
     if (
       typeof source !== "string" ||
       !/^https?:\/\/\*\.[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?(?::[0-9]{1,5})?$/.test(
-        source,
+        remote,
       )
     )
       throw new Error("插件隔离域策略无效。");
-    const parsed = new URL(source.replace("*", "isolation"));
+    const parsed = new URL(remote.replace("*", "isolation"));
     if (parsed.port && (+parsed.port < 1 || +parsed.port > 65535))
       throw new Error("插件隔离端口无效。");
   }

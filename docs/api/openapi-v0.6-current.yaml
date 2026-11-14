@@ -10758,6 +10758,38 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+  /api/v1/plugin-v5/ui-assets/{lease}/{asset}:
+    get:
+      operationId: pluginV5Handler_OpaqueUIAsset
+      summary: GET /api/v1/plugin-v5/ui-assets/:lease/*asset
+      tags: [public]
+      x-campusos-stability: experimental
+      x-campusos-ownership: lease-derived-session-plugin
+      x-campusos-module-owner: core.plugin-platform
+      x-campusos-scope: immutable-opaque-ui-assets
+      x-campusos-operation: http.plugin.v5.ui_asset
+      x-campusos-auth: opaque-ui-lease+current-user-or-admin-session
+      parameters:
+        - name: lease
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: asset
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /api/v1/plugin-v5/{publisher}/{key}/commands:
     post:
       operationId: pluginV5Handler_Mutate
@@ -10781,6 +10813,11 @@ paths:
           required: true
           schema:
             type: string
+        - name: X-Plugin-UI-Proof
+          in: header
+          required: false
+          description: Delegated iframe configuration writes must supply the current UI proof, rechecked inside the family-locked configure transaction. Native user configuration omits this header.
+          schema: {type: string, pattern: '^sha256:[a-f0-9]{64}$'}
       requestBody:
         required: true
         content:
@@ -10946,6 +10983,67 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+  /api/v1/plugin-v5/{publisher}/{key}/{version}/ui-actions:
+    post:
+      operationId: pluginV5Handler_UIAction
+      summary: POST /api/v1/plugin-v5/:publisher/:key/:version/ui-actions
+      tags: [authenticated]
+      x-campusos-stability: experimental
+      x-campusos-ownership: current-user-derived
+      x-campusos-module-owner: core.plugin-platform
+      x-campusos-scope: published-ui-capability-self
+      x-campusos-operation: http.plugin.v5.user.ui_action
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: publisher
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: version
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: X-CSRF-Token
+          in: header
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PluginV5UIActionRequest'
+      x-campusos-schema-level: field-contract
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/PluginV5UIActionResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
   /api/v1/plugins:
     get:
       operationId: plugin_V5RetiredHTTP
@@ -16745,6 +16843,22 @@ components:
       required: [updated]
       properties:
         updated: {type: boolean, enum: [true]}
+    PluginV5UIActionRequest:
+      type: object
+      additionalProperties: false
+      required: [proof, action]
+      properties:
+        proof: {type: string, pattern: '^sha256:[a-f0-9]{64}$'}
+        action: {type: string, enum: [web.read, editor.article.import]}
+        url: {type: string, minLength: 1, maxLength: 2048}
+        kind: {type: string, enum: [document, image]}
+    PluginV5UIActionResult:
+      type: object
+      additionalProperties: false
+      properties:
+        authorized: {type: boolean}
+        bytes: {type: string, format: byte, maxLength: 1398104}
+        mime: {type: string}
     PluginV5AdminCommand:
       oneOf:
       - type: object
@@ -17253,6 +17367,26 @@ components:
       - error_code
       - purge_data
       - attempts
+    PluginV5SiteState:
+      type: object
+      additionalProperties: false
+      description: Display-only current visible release availability. Never authorizes execution or reveals system configuration.
+      properties:
+        installed:
+          type: boolean
+        enabled:
+          type: boolean
+        ready:
+          type: boolean
+        observed:
+          type: string
+        error_code:
+          type: string
+      required:
+      - installed
+      - enabled
+      - ready
+      - observed
     PluginV5InventoryEntry:
       type: object
       additionalProperties: false
@@ -17267,6 +17401,9 @@ components:
           type: object
         consent:
           type: object
+          description: Current user's own saved consent metadata, including on list responses; no other owner's consent.
+        site_state:
+          $ref: '#/components/schemas/PluginV5SiteState'
         configuration:
           type: object
           description: Current domain only, ordinary values and opaque Secret refs; no

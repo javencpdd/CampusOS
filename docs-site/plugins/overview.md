@@ -1,6 +1,6 @@
 # v5 外部插件体系
 
-> 更新时间：2026-10-19（Asia/Shanghai）。当前 v1.2 按阶段验收；V12-05 提供 Linux 固定 worker Wasm 执行，V12-06 Linux范围已验收，Windows按用户要求延期、仍未验收。
+> 更新时间：2026-11-15（Asia/Shanghai）。当前 v1.2 按阶段验收；V12-05 提供 Linux 固定 worker Wasm 执行，V12-06 Linux范围已验收，Windows按用户要求延期、仍未验收。
 
 | 目标 | 类型 | 边界 |
 | --- | --- | --- |
@@ -15,7 +15,7 @@
 
 PDF Viewer `3.0.0-dev.2` 是 `runtime: none` 的 UI-only 示例：文章附件、个人资源和个人文档的 PDF 通过宿主选择的有限资源句柄预览。PC/移动端提供弹窗、侧边、全屏、新标签页；没有插件仍可下载。Echo 是后端包合同示例，当前 Echo/WASI 产物尚未转换为新的有限 JSON ABI，包检查通过不代表该示例能由 Wasm Runner 执行。
 
-UI 在每个当前证明的独立子域加载，由有限 MessagePort 读取普通配置和已选择 PDF。授权、原业务 ACL 和资源修订始终由宿主复核。Wasm/Container 的 CPU/内存/跨进程隔离与恢复验收不由 UI-only 运行替代。
+UI 使用声明式 opaque 沙箱或当前证明的独立子域，由有限 MessagePort 访问获准资源。[RSS 2.0.0 图文订阅插件](/plugins/rss-publisher)以普通网页加载，JS 解析在插件包内，通过通用 Broker 读取公开内容和转存图片，再由用户在原编辑器核对发布。此段更新时间：2026-11-15（Asia/Shanghai）。授权、原业务 ACL 和资源修订始终由宿主复核。Wasm/Container 的 CPU/内存/跨进程隔离与恢复验收不由 UI-only 运行替代。
 
 继续阅读：[Manifest 与配置](/plugins/manifest)、[隔离 UI 与 Bridge](/plugins/frontend-runtime)、[授权与资源访问](/plugins/authorization-v3)、签名包与管理操作（仓库 `docs/help/插件v5包与签名操作说明.md`）。旧 v4 教程仅供历史参考。
 

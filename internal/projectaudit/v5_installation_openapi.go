@@ -509,6 +509,26 @@ func v5InstallationOpenAPISchemas() string {
       - error_code
       - purge_data
       - attempts
+    PluginV5SiteState:
+      type: object
+      additionalProperties: false
+      description: Display-only current visible release availability. Never authorizes execution or reveals system configuration.
+      properties:
+        installed:
+          type: boolean
+        enabled:
+          type: boolean
+        ready:
+          type: boolean
+        observed:
+          type: string
+        error_code:
+          type: string
+      required:
+      - installed
+      - enabled
+      - ready
+      - observed
     PluginV5InventoryEntry:
       type: object
       additionalProperties: false
@@ -523,6 +543,9 @@ func v5InstallationOpenAPISchemas() string {
           type: object
         consent:
           type: object
+          description: Current user's own saved consent metadata, including on list responses; no other owner's consent.
+        site_state:
+          $ref: '#/components/schemas/PluginV5SiteState'
         configuration:
           type: object
           description: Current domain only, ordinary values and opaque Secret refs; no

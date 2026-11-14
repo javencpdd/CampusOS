@@ -94,6 +94,8 @@ type EmailConfig struct {
 
 type PluginConfig struct {
 	DataDir          string
+	WebProxyProfiles string
+	WebProxyProfile  string
 	WasmImage        string
 	ContainerEnabled bool
 	UIListen         string
@@ -212,6 +214,8 @@ func Load() *Config {
 		},
 		Plugin: PluginConfig{
 			DataDir:          get("PLUGIN_DATA_DIR", "data/plugin_data"),
+			WebProxyProfiles: get("CAMPUSOS_PLUGIN_WEB_PROXY_PROFILES", ""),
+			WebProxyProfile:  get("CAMPUSOS_PLUGIN_WEB_PROXY_PROFILE", ""),
 			WasmImage:        strings.TrimSpace(get("CAMPUSOS_PLUGIN_WASM_IMAGE", "")),
 			ContainerEnabled: getBool("CAMPUSOS_PLUGIN_CONTAINER_ENABLED", false),
 			UIListen:         strings.TrimSpace(get("CAMPUSOS_PLUGIN_UI_LISTEN", "")),

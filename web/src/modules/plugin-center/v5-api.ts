@@ -1,3 +1,4 @@
+import { randomRequestID } from '../../../../sdk/typescript/src/random-request-id'
 import api from '../../shared/api/client'
 import type { ConfigEntry, ConfigValue, Coordinate } from '../../../../sdk/typescript/src/v5-configuration-form'
 import type { ConfigOptions } from '../../../../sdk/typescript/src/v5-configuration-form'
@@ -18,6 +19,10 @@ export const pluginV5Api = {
     }),
   detail: (c: Coordinate) =>
     api.get<never, Envelope<ConfigEntry>>(`${family(c)}/${encodeURIComponent(c.version)}`, wire),
+  uiAction: (c: Coordinate, data: Record<string, unknown>) =>
+    api.post<never, Envelope<any>>(`${family(c)}/${encodeURIComponent(c.version)}/ui-actions`, data, {
+      timeout: 22000,
+    }),
   uiState: (c: Coordinate) =>
     api.get<never, Envelope<{ proof: string }>>(`${family(c)}/${encodeURIComponent(c.version)}/ui`, wire),
   uiManifest: () =>
@@ -30,7 +35,7 @@ export const pluginV5Api = {
   command: (c: Coordinate, intent: Record<string, unknown>) =>
     api.post<never, Envelope<{ id: string; status: string }>>(
       `${family(c)}/commands`,
-      stringifyExactJSON({ ...intent, version: c.version, idempotency_key: crypto.randomUUID() }),
+      stringifyExactJSON({ ...intent, version: c.version, idempotency_key: randomRequestID() }),
       wire,
     ),
   configureSecrets: (c: Coordinate, revision: string, secret_refs: Record<string, string>) =>
@@ -40,23 +45,23 @@ export const pluginV5Api = {
         kind: 'configure',
         version: c.version,
         expected_revision: revision,
-        idempotency_key: crypto.randomUUID(),
+        idempotency_key: randomRequestID(),
         configuration_part: 'secret_refs',
         secret_refs,
       }),
       wire,
     ),
-  configure: (c: Coordinate, revision: string, values: Record<string, ConfigValue>) =>
+  configure: (c: Coordinate, revision: string, values: Record<string, ConfigValue>, uiProof?: string) =>
     api.post<never, Envelope<{ id: string; status: string }>>(
       `${family(c)}/commands`,
       stringifyExactJSON({
         kind: 'configure',
         version: c.version,
         expected_revision: revision,
-        idempotency_key: crypto.randomUUID(),
+        idempotency_key: randomRequestID(),
         values,
         configuration_part: 'values',
       }),
-      wire,
+      { ...wire, ...(uiProof ? { headers: { 'X-Plugin-UI-Proof': uiProof } } : {}) },
     ),
 }
