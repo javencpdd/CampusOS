@@ -1,6 +1,6 @@
 # CampusOS QQ 文档助手 · OneBot 适配插件 0.1.0
 
-> 更新时间：2026-10-28（Asia/Shanghai）
+> 最新更新时间：2026-11-15（Asia/Shanghai）
 
 独立运行的 QQ 机器人适配插件，通过现有 NapCat 的 OneBot 11 正向 WebSocket 接收事件并回复；不是 NapCat 原生插件或 CampusOS v5 包，不能导入两者的插件管理页。本机 NapCat 构建只加载硬编码官方 ID 的原生插件，因此本例使用标准协议，不修改加载器或伪装官方 ID。其他 OneBot 实现尚未实测。
 
@@ -17,6 +17,8 @@ node integrations/napcat-campusos/tools/catalog.mjs
 make qqbot-check
 python3 integrations/napcat-campusos/tools/pack.py
 ```
+
+更新`tools/catalog.mjs`白名单中的公开文档源后，先重新生成`catalog.json`，再运行`make qqbot-check`，将文档和目录快照一同提交。`--check`严格比较文档正文及SHA256；当前目录保持八篇公开文档，不自动扩展扫描范围。
 
 ZIP 解压到独立目录，例如 `~/qqbot/campusos-qqbot/`，不要放进 NapCat 原生插件目录。复制 `config.example.json` 到 `~/.config/campusos-qqbot/config.json` 并设为 0600。默认关闭、空群白名单和空 Token；必须填写自己的群号、官网局域网地址、回环 WS URL 和与 NapCat 对应的随机 Token。然后：
 

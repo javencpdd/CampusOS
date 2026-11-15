@@ -102,6 +102,9 @@ jobs:
       - name: Download Go modules
         run: go mod download
 
+      - name: Test migration timing across wall-clock rollback
+        run: python3 -m unittest scripts/test_migration_timing.py -v
+
       - name: Run database migrations
         run: make migrate-up
 
