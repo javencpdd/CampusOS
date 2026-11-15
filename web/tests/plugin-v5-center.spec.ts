@@ -139,6 +139,144 @@ it('keeps a stopped staged version inactive until an explicit enable command', a
   expect(mock.command.mock.calls[0][1]).toEqual({ kind: 'enable', expected_generation: '9007199254740993' })
 })
 
+it('merges an archived personal version and the site version into one update entry without claiming either is running', async () => {
+  const personal = {
+    ...entry().installation,
+    version: '1.0.0',
+    desired_version: '1.0.0',
+    desired: 'enabled',
+    observed: 'stopped',
+  }
+  const latest = { ...entry(), installation: personal }
+  const old = {
+    ...latest,
+    release: { ...latest.release, version: '1.0.0', storage: 'purged' },
+    site_state: { installed: false, enabled: false, ready: false, observed: 'stopped' },
+  }
+  mock.list.mockResolvedValue({ code: 0, data: { items: [old, latest], next_cursor: '' } })
+  mock.detail.mockResolvedValue({ code: 0, data: latest })
+  const w = await opened()
+  expect(w.get('[aria-label="可用插件"]').findAll('button[data-coordinate]')).toHaveLength(1)
+  expect(w.get('[aria-label="可用插件"]').text()).not.toContain('版本 1.0.0')
+  expect(w.get('[aria-label="插件当前状态"]').text()).toContain('更新前需确认用途')
+  expect(w.get('[aria-label="本人插件使用步骤"]').findAll('li')[2].text()).not.toContain('请求已提交')
+  expect(w.get('[aria-label="本人插件使用步骤"]').findAll('li')[2].classes()).not.toContain('done')
+  expect(w.text()).toContain('同一安装记录')
+  expect(w.text()).toContain('授权截止：永久')
+  expect(mock.command).not.toHaveBeenCalled()
+})
+
+it('keeps the site version when a later page contains an older personal version', async () => {
+  const latest = { ...entry(), release: { ...entry().release, version: '10.0.0' } }
+  mock.list.mockResolvedValueOnce({ code: 0, data: { items: [latest], next_cursor: 'opaque-cursor' } })
+  mock.detail.mockResolvedValue({ code: 0, data: latest })
+  const w = await opened()
+  mock.list.mockResolvedValueOnce({
+    code: 0,
+    data: {
+      items: [
+        {
+          ...entry(),
+          release: { ...entry().release, version: '2.0.0' },
+          site_state: { installed: false, enabled: false, ready: false, observed: 'stopped' },
+        },
+      ],
+      next_cursor: '',
+    },
+  })
+  await w
+    .findAll('button')
+    .find((b) => b.text() === '加载更多')!
+    .trigger('click')
+  await flushPromises()
+  expect(w.get('[aria-label="可用插件"]').findAll('button[data-coordinate]')).toHaveLength(1)
+  expect(w.get('[aria-label="可用插件"]').text()).toContain('版本 10.0.0')
+})
+
+it('submits one update only after consent and displays a pending update until the version switches', async () => {
+  const item = {
+    ...consentedEntry(),
+    installation: {
+      ...entry().installation,
+      version: '1.0.0',
+      desired_version: '1.0.0',
+      desired: 'enabled',
+      observed: 'stopped',
+    },
+  }
+  mock.detail.mockResolvedValue({ code: 0, data: item })
+  const w = await opened()
+  mock.detail.mockResolvedValue({
+    code: 0,
+    data: {
+      ...item,
+      installation: { ...item.installation, desired_version: coordinate.version, observed: 'pending' },
+    },
+  })
+  await w
+    .findAll('button')
+    .find((b) => b.text() === `更新到 ${coordinate.version}`)!
+    .trigger('click')
+  await flushPromises()
+  expect(mock.command).toHaveBeenCalledOnce()
+  expect(mock.command.mock.calls[0][0].version).toBe(coordinate.version)
+  expect(mock.command.mock.calls[0][1]).toMatchObject({ kind: 'upgrade', expected_generation: '9007199254740993' })
+  expect(w.get('[aria-label="插件当前状态"]').text()).toContain('正在更新')
+  expect(w.findAll('button').some((b) => b.text().startsWith('更新到 '))).toBe(false)
+  expect(w.findAll('button').some((b) => b.text() === '打开插件')).toBe(false)
+})
+
+it.each(['disable', 'uninstall'])(
+  'targets the installed version for %s and refreshes the same site-version entry',
+  async (kind) => {
+    const item = {
+      ...entry(),
+      installation: {
+        ...entry().installation,
+        version: '1.0.0',
+        desired_version: '1.0.0',
+        desired: 'enabled',
+        observed: 'stopped',
+      },
+    }
+    mock.detail.mockResolvedValue({ code: 0, data: item })
+    const w = await opened()
+    await w
+      .findAll('button')
+      .find((b) => b.text() === (kind === 'disable' ? '停用' : '卸载'))!
+      .trigger('click')
+    await flushPromises()
+    expect(mock.command).toHaveBeenCalledOnce()
+    expect(mock.command.mock.calls[0][0]).toMatchObject({ ...coordinate, version: '1.0.0' })
+    expect(mock.detail.mock.calls.at(-1)[0].version).toBe(coordinate.version)
+  },
+)
+
+it('allows an explicit retry after an update has failed without pretending the old version is enabled', async () => {
+  const item = {
+    ...consentedEntry(),
+    installation: {
+      ...entry().installation,
+      version: '1.0.0',
+      desired_version: coordinate.version,
+      desired: 'enabled',
+      observed: 'failed',
+      error_code: 'plugin.runtime_prepare_failed',
+    },
+  }
+  mock.detail.mockResolvedValue({ code: 0, data: item })
+  const w = await opened()
+  expect(w.get('[aria-label="插件当前状态"]').text()).toContain('更新尚未完成')
+  expect(mock.command).not.toHaveBeenCalled()
+  await w
+    .findAll('button')
+    .find((b) => b.text() === `更新到 ${coordinate.version}`)!
+    .trigger('click')
+  await flushPromises()
+  expect(mock.command).toHaveBeenCalledOnce()
+  expect(mock.command.mock.calls[0][1].kind).toBe('upgrade')
+})
+
 it.each(['disabled', 'executor'])('explains the site-side %s block without sending a personal enable', async (kind) => {
   const item: any = consentedEntry()
   item.site_state =

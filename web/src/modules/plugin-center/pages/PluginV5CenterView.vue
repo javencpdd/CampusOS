@@ -56,13 +56,7 @@
           </li>
           <li :class="{ done: progress?.stage === 'ready' }">
             <strong>3. 启用并使用</strong
-            ><span>{{
-              progress?.stage === 'ready'
-                ? '已启用'
-                : selected.installation?.desired === 'enabled'
-                  ? '请求已提交'
-                  : '尚未启用'
-            }}</span>
+            ><span>{{ progress?.stage === 'ready' ? '已启用' : progress?.label || '尚未启用' }}</span>
           </li>
         </ol>
         <aside class="next-step" aria-label="下一步">
@@ -92,17 +86,18 @@
           ><template v-else
             ><p>已安装到本人账号。</p>
             <p v-if="selected.installation.version !== selected.release.version">
-              当前版本仍为 {{ selected.installation.version }}。切换准备完成后，需明确启用此版本。
+              本人当前版本仍为 {{ selected.installation.version }}，本站版本为
+              {{ selected.release.version }}。更新会在同一安装记录中完成。
             </p>
             <button
               v-if="
                 selected.installation.version !== selected.release.version &&
-                selected.installation.desired_version !== selected.release.version
+                (selected.installation.desired_version !== selected.release.version || progress?.action === 'upgrade')
               "
               :disabled="progress?.action !== 'upgrade'"
               @click="command('upgrade')"
             >
-              切换到此版本</button
+              更新到 {{ selected.release.version }}</button
             ><button
               v-if="
                 selected.installation.desired !== 'enabled' ||
@@ -249,7 +244,7 @@ const hasUserPage = computed(
     (selected.value.release.manifest.ui || []).some((ui) => ui.audience === 'user'),
 )
 const expiryText = (value: string | undefined) =>
-  value && value !== '0' ? new Date(Number(value)).toLocaleString() : '未设置'
+  value && value !== '0' ? new Date(Number(value)).toLocaleString() : '永久'
 let epoch = 0,
   disposed = false,
   timer: ReturnType<typeof setInterval>
@@ -306,7 +301,16 @@ function current() {
 }
 function remember(item: ConfigEntry) {
   selected.value = item
-  items.value = items.value.map((old) => (coordinateKey(old.release) === coordinateKey(item.release) ? item : old))
+  items.value = mergeInventory(items.value, [item])
+}
+function mergeInventory(previous: ConfigEntry[], incoming: ConfigEntry[]) {
+  const families = new Map<string, ConfigEntry>()
+  for (const item of [...previous, ...incoming]) {
+    const family = `${item.release.publisher}/${item.release.plugin_key}`
+    const old = families.get(family)
+    if (!old || item.site_state?.installed || !old.site_state?.installed) families.set(family, item)
+  }
+  return [...families.values()]
 }
 function showConsent() {
   consentOpen.value = true
@@ -328,8 +332,7 @@ async function load(more: boolean) {
     const r = await pluginV5Api.list(cursor.value)
     if (!current() || turn !== epoch) return
     if (r.code !== 0 || !Array.isArray(r.data?.items)) throw Error('插件清单不可用。')
-    const seen = new Set(items.value.map((item) => coordinateKey(item.release)))
-    items.value.push(...r.data.items.filter((item) => !seen.has(coordinateKey(item.release))))
+    items.value = mergeInventory(items.value, r.data.items)
     cursor.value = r.data.next_cursor || ''
   } catch (e: any) {
     if (current() && turn === epoch) error.value = e.message || '读取失败。'
@@ -368,7 +371,7 @@ async function choose(c: Coordinate, preserveContext = false) {
     if (turn === epoch) busy.value = false
   }
 }
-async function write(intent: Record<string, unknown>) {
+async function write(intent: Record<string, unknown>, installedVersion?: string) {
   if (!current() || busy.value || needsReload.value || !selected.value) return
   const turn = epoch,
     c = { ...selected.value.release }
@@ -376,7 +379,7 @@ async function write(intent: Record<string, unknown>) {
   error.value = ''
   message.value = ''
   try {
-    const r = await pluginV5Api.command(c, intent)
+    const r = await pluginV5Api.command(installedVersion ? { ...c, version: installedVersion } : c, intent)
     if (!current() || turn !== epoch) return
     if (r.code !== 0 || !r.data?.id) throw Error('操作结果未确认。')
     busy.value = false
@@ -413,11 +416,14 @@ function command(kind: string) {
     error.value = state.detail
     return
   }
-  void write({
-    kind,
-    expected_generation: item.installation?.generation || '0',
-    ...(kind === 'uninstall' ? { purge_data: purge.value } : {}),
-  })
+  void write(
+    {
+      kind,
+      expected_generation: item.installation?.generation || '0',
+      ...(kind === 'uninstall' ? { purge_data: purge.value } : {}),
+    },
+    ['disable', 'uninstall'].includes(kind) ? item.installation?.version : undefined,
+  )
 }
 function consent(accepted: boolean) {
   if (

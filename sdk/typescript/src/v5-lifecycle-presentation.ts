@@ -122,23 +122,55 @@ export function userProgress(entry: ConfigEntry, now = Date.now()) {
   if (!consentCurrent(entry))
     return result(
       "consent",
-      entry.consent?.accepted ? "需要重新确认用途" : "等待本人同意用途",
-      "查看下方用途，勾选确认并点击“同意此版本用途”。单独勾选尚未生效。",
+      install.version !== entry.release.version
+        ? "更新前需确认用途"
+        : entry.consent?.accepted
+          ? "需要重新确认用途"
+          : "等待本人同意用途",
+      install.version !== entry.release.version
+        ? `本站版本为 ${entry.release.version}，本人安装仍为 ${install.version}。请先确认新版用途，再在同一安装中完成更新。`
+        : "查看下方用途，勾选确认并点击“同意此版本用途”。单独勾选尚未生效。",
       "consent",
     );
-  if (
-    install.version !== entry.release.version &&
-    !(
+  if (install.version !== entry.release.version) {
+    if (
+      install.desired_version === entry.release.version &&
+      install.desired === "enabled"
+    ) {
+      if (install.error_code || install.observed === "failed")
+        return result(
+          "upgrade",
+          "更新尚未完成",
+          "前次更新未完成，请核对配置或联系管理员后重新更新。",
+          "upgrade",
+        );
+      return result(
+        "pending",
+        "正在更新",
+        "更新已提交，等待当前版本切换。请刷新状态，无需重复更新。",
+        "refresh",
+      );
+    }
+    if (!(
       install.desired_version === entry.release.version &&
       install.desired === "disabled"
-    )
-  )
+    ))
+      return result(
+        "upgrade",
+        "等待更新到本站版本",
+        "用途已确认，点击更新，在同一安装记录中替换旧版本。原来停用的安装更新后仍需启用。",
+        "upgrade",
+      );
+  } else if (
+    (install.desired_version || install.version) !== entry.release.version
+  ) {
     return result(
-      "upgrade",
-      "需要切换到此版本",
-      "用途已确认，点击切换版本；准备完成后再启用。",
-      "upgrade",
+      "pending",
+      "版本状态待确认",
+      "本人安装正在切换版本，请刷新当前状态。",
+      "refresh",
     );
+  }
   if (install.desired !== "enabled")
     return result(
       "enable",

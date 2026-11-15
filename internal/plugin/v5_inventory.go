@@ -3,6 +3,8 @@ package plugin
 import (
 	"context"
 	"encoding/json"
+	"strings"
+
 	identity "github.com/campusos/CampusOS/internal/modules/core/identity/port"
 )
 
@@ -80,6 +82,13 @@ func (s *V5Platform) Inventory(ctx context.Context, admin bool, after string, li
 		query := v5Query{After: after, Limit: limit + 1, Now: s.now().UnixMilli()}
 		if !admin {
 			query.VisibleOwner = a.p.Actor.ID
+			// Accept a previous version cursor, while new user cursors remain
+			// stable across site upgrades and cannot reintroduce the same family.
+			if family, version, ok := strings.Cut(after, "@"); ok {
+				if publisher, key, ok := strings.Cut(family, "/"); ok && (V5Coordinate{publisher, key, version}).valid() {
+					query.After = family
+				}
+			}
 		}
 		rows, err := s.store.list(tx, kind, query)
 		if err != nil {
@@ -106,7 +115,7 @@ func (s *V5Platform) Inventory(ctx context.Context, admin bool, after string, li
 			if len(rows) > limit {
 				out.Next = v5RecordID(kind, raw)
 				if !admin {
-					out.Next = c.id()
+					out.Next = c.family()
 				}
 			}
 		}
