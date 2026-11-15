@@ -170,10 +170,11 @@ it("rejects past approval expiry and retries only a read-back operation revision
   });
   const w = await opened();
   await w.get('[aria-label="审批原因"]').setValue("已核对");
+  await w.get('[aria-label="授权期限"]').setValue("date");
   await w.get('[aria-label="授权有效期"]').setValue("2020-01-01T00:00");
   await w.get('[aria-label="版本授权审批"]').trigger("submit");
   expect(mock.command).not.toHaveBeenCalled();
-  expect(w.text()).toContain("未来 30 天");
+  expect(w.text()).toContain("未来的授权截止时间");
   await w
     .findAll("button")
     .find((b) => b.text() === "恢复已保存的设置")!

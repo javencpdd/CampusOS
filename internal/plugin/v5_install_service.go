@@ -16,6 +16,10 @@ import (
 
 var errV5Replay = errors.New("internal v5 operation replay")
 
+// A zero expiry is a revocable permanent grant. Finite deadlines share the
+// four-digit calendar range used by the Admin date input and exact JS millis.
+const v5MaxGrantExpiryMS int64 = 253402300799999
+
 // Mutation carries intent only. Principal, owner, current grant, desired state,
 // lease and observed health are always supplied/reloaded by the host.
 type V5Mutation struct {
@@ -606,7 +610,7 @@ func (s *V5Platform) apply(ctx context.Context, c V5Coordinate, owner string, r 
 		if g.Consumes == nil {
 			g.Consumes = []PluginV5Consume{}
 		}
-		if g.ExpiresAtMS != 0 && (g.ExpiresAtMS <= s.now().UnixMilli() || g.ExpiresAtMS > s.now().Add(30*24*time.Hour).UnixMilli()) {
+		if g.ExpiresAtMS != 0 && (g.ExpiresAtMS <= s.now().UnixMilli() || g.ExpiresAtMS > v5MaxGrantExpiryMS) {
 			return ErrV5Invalid
 		}
 		if !v5GrantValid(m, g) {

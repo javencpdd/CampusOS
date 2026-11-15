@@ -79,6 +79,7 @@ export type PluginV5AdminInstallationCommand =
             consumes: PluginV5Consume[];
             host_resources?: NonNullable<PluginV5Manifest["host_resources"]>;
             reason?: string;
+            /** Zero/omitted is revocable permanent approval; otherwise future Unix milliseconds, through year 9999. */
             expires_at_ms?: string;
           }
         | { kind: "revoke"; expected_revision: string; reason?: string }

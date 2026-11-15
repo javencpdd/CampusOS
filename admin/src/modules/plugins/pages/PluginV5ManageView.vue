@@ -259,13 +259,59 @@
                 </details>
               </template>
               <p v-else>仅需插件界面，无须批准后端运行资源。</p>
+            </fieldset>
+            <fieldset
+              class="grant-validity"
+              :disabled="busy || needsReload || !allowed('configure')"
+            >
+              <legend>授权期限</legend>
+              <p class="help-text">
+                已保存：{{
+                  selected.grant?.approved
+                    ? formatGrantExpiry(Number(selected.grant.expires_at_ms || "0"))
+                    : "尚未批准"
+                }}
+              </p>
               <label
-                >授权有效期（最长 30 天）<input
+                >有效期设置
+                <select aria-label="授权期限" v-model="expiryDraft.choice">
+                  <option value="permanent">永久</option>
+                  <option
+                    v-for="days in grantExpiryDays"
+                    :key="days"
+                    :value="String(days)"
+                  >
+                    延长 {{ days }} 天
+                  </option>
+                  <option value="custom">自定义延长天数</option>
+                  <option value="date">指定截止时间</option>
+                </select></label
+              >
+              <label v-if="expiryDraft.choice === 'custom'"
+                >延长天数<input
+                  aria-label="延长天数"
+                  type="number"
+                  min="1"
+                  :max="maxGrantExtensionDays"
+                  step="1"
+                  required
+                  v-model.number="expiryDraft.days" /></label
+              >
+              <label v-if="expiryDraft.choice === 'date'"
+                >授权截止时间<input
                   aria-label="授权有效期"
                   type="datetime-local"
+                  max="9999-12-31T23:59"
                   required
-                  v-model="expiry"
-              /></label>
+                  v-model="expiryDraft.date" /></label
+              >
+              <p class="help-text">{{ expiryPreview }}</p>
+              <p
+                v-if="!['permanent', 'date'].includes(expiryDraft.choice)"
+                class="help-text"
+              >
+                未到期的授权从原截止时间延长；已到期、新授权或永久改为限时授权，从保存时开始计算。
+              </p>
             </fieldset>
             <label v-if="allowed('configure')"
               >审批原因<input
@@ -440,7 +486,15 @@ import type {
 } from "../../../../../sdk/typescript/src/isolated-plugin-bridge";
 import { stringifyExactJSON } from "../../../../../sdk/typescript/src/exact-json";
 import { installPluginFramePolicy } from "../../../../../sdk/typescript/src/plugin-frame-policy";
-import { computed, onBeforeUnmount, onMounted, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from "vue";
+import {
+  formatGrantExpiry,
+  grantExpiryDays,
+  grantExpirySnapshot,
+  initialGrantExpiry,
+  maxGrantExtensionDays,
+  resolveGrantExpiry,
+} from "../v5-grant-expiry";
 import {
   getAdminAccessToken,
   getCurrentAdminProfile,
@@ -514,13 +568,24 @@ const resourceLabels: Record<string, string> = {
 const approvalOpen = ref(false),
   approvalPanel = ref<HTMLDetailsElement | null>(null),
   draftBaseline = ref("");
+const expiryDraft = reactive(initialGrantExpiry());
+const expiryPreview = computed(() => {
+  try {
+    const expires = resolveGrantExpiry(expiryDraft, selected.value?.grant, now.value);
+    return expires === 0
+      ? "永久有效，仍可随时停用或撤销授权。"
+      : `保存后截止时间：${formatGrantExpiry(expires)}`;
+  } catch (e: any) {
+    return e.message;
+  }
+});
 function draftSnapshot() {
   return JSON.stringify({
     capabilities: capabilities.value,
     resources: resourcesApproved.value,
     limits: limits.value,
     targets: [...targets.value].sort(),
-    expiry: expiry.value,
+    expiry: grantExpirySnapshot(expiryDraft),
     reason: reason.value,
   });
 }
@@ -544,10 +609,7 @@ function serverDraftSnapshot(item: ConfigEntry) {
       ]),
     ),
     targets: [...(g?.host_resources?.network_targets || [])].sort(),
-    expiry:
-      g?.expires_at_ms && g.expires_at_ms !== "0"
-        ? localDateTime(Number(g.expires_at_ms))
-        : expiry.value,
+    expiry: grantExpirySnapshot(initialGrantExpiry(g)),
     reason: "",
   });
 }
@@ -623,11 +685,7 @@ function populateApprovalDraft(item: ConfigEntry) {
     ]),
   );
   targets.value = [...(g?.host_resources?.network_targets || [])];
-  expiry.value = localDateTime(
-    g?.expires_at_ms && g.expires_at_ms !== "0"
-      ? Number(g.expires_at_ms)
-      : Date.now() + 24 * 60 * 60 * 1000,
-  );
+  Object.assign(expiryDraft, initialGrantExpiry(g));
   reason.value = "";
   draftBaseline.value = draftSnapshot();
 }
@@ -637,12 +695,6 @@ const archive = ref<File>(),
   operationState = ref("");
 const profile = ref(getCurrentAdminProfile());
 const operationFact = ref<any>(null);
-function localDateTime(ms: number) {
-  const d = new Date(ms);
-  d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
-  return d.toISOString().slice(0, 16);
-}
-const expiry = ref(localDateTime(Date.now() + 24 * 60 * 60 * 1000));
 let epoch = 0,
   disposed = false,
   timer: ReturnType<typeof setInterval>;
@@ -906,13 +958,11 @@ function approve() {
     return;
   }
   const m = selected.value.release.manifest;
-  const expires = Date.parse(expiry.value);
-  if (
-    !Number.isSafeInteger(expires) ||
-    expires <= Date.now() ||
-    expires > Date.now() + 30 * 24 * 60 * 60 * 1000
-  ) {
-    error.value = "请选择未来 30 天内的授权截止时间。";
+  let expires: number;
+  try {
+    expires = resolveGrantExpiry(expiryDraft, selected.value.grant);
+  } catch (e: any) {
+    error.value = e.message;
     return;
   }
   let resources: Record<string, unknown> | undefined;
@@ -1150,10 +1200,18 @@ label {
   margin: 12px 0;
 }
 button,
-input {
+input,
+select {
   font: inherit;
   padding: 8px;
   max-width: 100%;
+}
+.grant-validity input,
+.grant-validity select {
+  display: block;
+  width: min(100%, 360px);
+  box-sizing: border-box;
+  margin-top: 6px;
 }
 button {
   margin: 4px;
