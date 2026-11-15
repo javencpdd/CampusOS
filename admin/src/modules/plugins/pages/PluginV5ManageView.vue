@@ -34,7 +34,7 @@
     <div class="columns">
       <nav aria-label="插件版本" class="plugin-list">
         <button
-          v-for="item in items"
+          v-for="item in visibleItems"
           :key="coordinateKey(item.release)"
           :data-coordinate="coordinateKey(item.release)"
           :aria-pressed="
@@ -52,7 +52,7 @@
         <button v-if="cursor" :disabled="busy" @click="load(true)">
           加载更多
         </button>
-        <p v-if="!items.length">暂无已导入的插件，可展开“导入新插件”添加。</p>
+        <p v-if="!visibleItems.length">暂无可用的发布包，可展开“导入新插件”添加。</p>
       </nav>
       <section v-if="selected" aria-label="插件生命周期" class="plugin-detail">
         <header>
@@ -471,6 +471,9 @@ const items = ref<ConfigEntry[]>([]),
   error = ref(""),
   message = ref(""),
   purge = ref(false);
+const visibleItems = computed(() =>
+  items.value.filter((item) => item.release.storage !== "purged"),
+);
 const needsReload = ref(false),
   now = ref(Date.now()),
   enableBlocked = computed(() =>

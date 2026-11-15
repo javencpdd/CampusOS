@@ -875,13 +875,23 @@ func (s *V5Platform) compatible(ctx context.Context, i V5Installation, c V5Coord
 	return s.validateInstanceConfiguration(ctx, c, i.Owner, m)
 }
 func (s *V5Platform) purgeRelease(ctx context.Context, c V5Coordinate, r V5PackageRelease, op *V5Operation) error {
-	found, err := s.store.referenced(ctx, c)
-	if err != nil {
+	if err := s.canPurgeRelease(ctx, c); err != nil {
 		return err
 	}
-	if found {
+	op.StorageRevision = r.Revision
+	return nil
+}
+
+func (s *V5Platform) canPurgeRelease(ctx context.Context, c V5Coordinate) error {
+	global, err := s.installation(ctx, c, "")
+	if err != nil && err != ErrV5NotFound {
+		return err
+	}
+	// Users cannot execute a release that is not globally current. Their
+	// retained versions and recovery pointers may keep data associations, but
+	// no longer require a runnable copy when a verified repository copy exists.
+	if err == nil && global.Installed && (global.Version == c.Version || global.DesiredVersion == c.Version) {
 		return ErrV5Conflict
 	}
-	op.StorageRevision = r.Revision
 	return nil
 }

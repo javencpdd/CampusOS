@@ -118,39 +118,7 @@ func (s *V5Platform) claimed(ctx context.Context, current *V5Operation, expected
 }
 func (s *V5Platform) processClaim(ctx context.Context, op V5Operation) error {
 	if op.Kind == "purge_release" {
-		return s.system(ctx, op, "purge_release", func(tx context.Context, current *V5Operation) error {
-			if current.Status != "working" || current.Lease != op.Lease {
-				return errV5Replay
-			}
-			r, err := s.release(tx, op.V5Coordinate)
-			if err != nil {
-				return err
-			}
-			if r.Revision != op.StorageRevision {
-				current.Status = "superseded"
-				return nil
-			}
-			referenced, err := s.store.referenced(tx, op.V5Coordinate)
-			if err != nil {
-				return err
-			}
-			if referenced {
-				return ErrV5Conflict
-			}
-			if err := s.files.RemovePackage(r.Digest); err != nil {
-				return err
-			}
-			r.Storage = "purged"
-			r.Revision, err = s.store.next(tx)
-			if err != nil {
-				return err
-			}
-			if err := s.store.save(tx, v5Release, r.id(), r); err != nil {
-				return err
-			}
-			current.Status = "done"
-			return nil
-		})
+		return s.processPackagePurge(ctx, op)
 	}
 	i, err := s.installation(ctx, op.V5Coordinate, op.Owner)
 	if err != nil {
@@ -423,7 +391,7 @@ func (s *V5Platform) Observe(ctx context.Context, r V5Observation) error {
 }
 func (s *V5Platform) failClaim(ctx context.Context, op V5Operation, cause error) error {
 	return s.system(ctx, op, "failure", func(tx context.Context, current *V5Operation) error {
-		if current.Status != "working" || current.Lease != op.Lease {
+		if current.Lease != op.Lease || current.Status != "working" && !(op.Kind == "purge_release" && current.Status == "queued" && current.CleanupAfter != "") {
 			return errV5Replay
 		}
 		current.Status = "failed"
@@ -439,6 +407,9 @@ func (s *V5Platform) failClaim(ctx context.Context, op V5Operation, cause error)
 		}
 		if errors.Is(cause, ErrV5NotFound) || errors.Is(cause, ErrPluginV5PackageDigest) {
 			current.Error = "plugin.package_unavailable"
+		}
+		if op.Kind == "purge_release" {
+			return nil
 		}
 		i, err := s.installation(tx, op.V5Coordinate, op.Owner)
 		if err == ErrV5NotFound {

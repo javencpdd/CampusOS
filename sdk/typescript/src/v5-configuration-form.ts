@@ -24,6 +24,7 @@ export interface Coordinate {
 export interface ConfigEntry {
   release: Coordinate & {
     package_digest?: string;
+    storage?: string;
     manifest: {
       api_version: string;
       display_name?: string;

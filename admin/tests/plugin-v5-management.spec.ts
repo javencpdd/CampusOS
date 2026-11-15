@@ -298,6 +298,27 @@ it("requires saved approval before enabling; editing approval checkboxes alone d
   expect(w.get('[aria-label="当前审批状态"]').text()).toContain("已审批");
 });
 
+it("shows the current package while keeping archived metadata out of the runtime list", async () => {
+  const current = {
+    ...approvedEntry(),
+    release: { ...approvedEntry().release, version: "2.1.0", storage: "available" },
+    installation: { ...entry().installation, version: "2.1.0", desired: "enabled", observed: "stopped" },
+  };
+  const archived = {
+    ...current,
+    release: { ...approvedEntry().release, storage: "purged" },
+  };
+  mock.list.mockResolvedValue({ code: 0, data: { items: [archived, current], next_cursor: "" } });
+  mock.detail.mockResolvedValue({ code: 0, data: current });
+  const w = await opened();
+  const list = w.get('[aria-label="插件版本"]');
+  expect(list.findAll("button[data-coordinate]")).toHaveLength(1);
+  expect(list.text()).toContain("版本 2.1.0");
+  expect(list.text()).not.toContain("版本 1.0.0");
+  expect(w.get('[aria-label="当前审批状态"]').text()).toContain("界面已启用");
+  expect(mock.command).not.toHaveBeenCalled();
+});
+
 it.each(["expired", "missing-capability", "missing-resources"])(
   "blocks enabling with %s approval",
   async (kind) => {
