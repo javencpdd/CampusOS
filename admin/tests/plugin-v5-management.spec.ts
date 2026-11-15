@@ -248,6 +248,35 @@ it("requires switching versions before enabling a release which has not been sta
   expect(mock.command).not.toHaveBeenCalled();
 });
 
+it.each([
+  ["none", "stopped"],
+  ["wasm", "ready"],
+])("does not label a non-current %s release as enabled", async (runtime, observed) => {
+  const historical = approvedEntry();
+  historical.release.manifest.runtime = runtime;
+  historical.installation = {
+    ...historical.installation,
+    version: "2.1.0",
+    desired: "enabled",
+    observed,
+  };
+  mock.list.mockResolvedValue({
+    code: 0,
+    data: { items: [historical], next_cursor: "" },
+  });
+  mock.detail.mockResolvedValue({ code: 0, data: historical });
+  const w = await opened();
+  expect(w.get('[aria-label="插件版本"]').text()).toContain(
+    "非当前版本（当前 2.1.0）",
+  );
+  expect(w.get('[aria-label="当前审批状态"]').text()).toContain(
+    "非当前版本（当前 2.1.0）",
+  );
+  expect(w.get('[aria-label="插件启用步骤"]').findAll("li")[2].classes()).not.toContain("done");
+  expect(w.get('[aria-label="下一步"]').text()).toContain("切换到此版本");
+  expect(mock.command).not.toHaveBeenCalled();
+});
+
 it("requires saved approval before enabling; editing approval checkboxes alone does not enable", async () => {
   const unapproved = { ...entry(), grant: undefined };
   mock.detail.mockResolvedValue({ code: 0, data: unapproved });

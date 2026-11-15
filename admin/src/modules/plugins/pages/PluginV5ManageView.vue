@@ -558,6 +558,9 @@ const adminReady = computed(
   () =>
     !!selected.value &&
     approvalState(selected.value, now.value).ready &&
+    selected.value.installation?.version === selected.value.release.version &&
+    (selected.value.installation.desired_version ||
+      selected.value.installation.version) === selected.value.release.version &&
     selected.value.installation?.desired === "enabled" &&
     !selected.value.installation.error_code &&
     (selected.value.installation.observed === "ready" ||

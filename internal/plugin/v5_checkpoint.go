@@ -151,7 +151,10 @@ func (s *V5Platform) captureCheckpoint(ctx context.Context, i V5Installation, id
 	if err != nil {
 		return V5Checkpoint{}, err
 	}
-	if release.Storage != "available" {
+	// Quarantine blocks execution, not recovery of existing user data into an
+	// independently verified compatible release. The archive must still exist
+	// with its recorded immutable digest; neither old code nor grants run here.
+	if release.Storage != "available" && release.Storage != "quarantined" {
 		return V5Checkpoint{}, ErrV5Rollback
 	}
 	if _, err := s.files.Package(release.Digest); err != nil {

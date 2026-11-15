@@ -246,6 +246,8 @@ export function enableBlockReason(
 export function runtimeLabel(entry: ConfigEntry): string {
   const install = entry.installation;
   if (!install?.installed) return "未安装";
+  if (install.version !== entry.release.version)
+    return `非当前版本（当前 ${install.version}）`;
   if (install.desired !== "enabled") return "已停用";
   if (install.error_code === "plugin.runtime_unavailable")
     return "等待执行器（尚未运行）";
