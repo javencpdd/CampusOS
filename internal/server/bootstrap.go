@@ -159,6 +159,7 @@ func (s *Server) startInfrastructure() (*infrastructureBootstrap, error) {
 		AdminMFAOptional:      s.cfg.Auth.AdminMFADisabled,
 		BootstrapAdminSecret:  s.cfg.Auth.BootstrapAdminSecret,
 		AdminBootstrapSecret:  s.cfg.Auth.AdminBootstrapSecret,
+		EnsureDefaultAdmin:    databaseErr == nil && !strings.EqualFold(strings.TrimSpace(s.cfg.Deployment.Environment), "test") && recoveryState == nil,
 		RefreshBodyCompat:     s.cfg.Auth.RefreshBodyCompat,
 		CookieSecure:          s.cfg.Deployment.Environment == "production",
 	})

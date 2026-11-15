@@ -154,7 +154,9 @@ func TestKnowledgePublicSearchHTTPContractAndExactCitation(t *testing.T) {
 		// requirement to present a bearer credential. Other entry domains keep
 		// their existing security scheme and must not silently become public.
 		anonymous := route.Auth == "none" || route.Auth == "none+current-origin-policy"
-		if (operation["security"] == nil) != anonymous {
+		leaseCredential := route.OperationCode == "http.plugin.v5.ui_asset" && route.Auth == "opaque-ui-lease+current-user-or-admin-session"
+		pairCredential := route.OperationCode == "http.web_companion.agent.connect" && route.Auth == "one-use-client-pair+current-bound-user-session+package-grant+user-consent"
+		if (operation["security"] == nil) != (anonymous || leaseCredential || pairCredential) {
 			t.Fatal("OpenAPI authentication changed", route.OperationCode, route.Auth, operation["security"])
 		}
 		if route.OperationCode == "http.knowledge.search.public" {

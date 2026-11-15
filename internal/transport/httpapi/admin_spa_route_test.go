@@ -31,7 +31,7 @@ func TestAdminSPAActualRuntimeDescriptorsKeepSelfSeparateFromManagement(t *testi
 			}
 		}
 	}
-	if found != 5 || !management {
+	if found != 6 || !management {
 		t.Fatal("self/management actual registry incomplete", found, management)
 	}
 }

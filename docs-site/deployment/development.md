@@ -110,7 +110,7 @@ SKIP_INFRA=true SKIP_MIGRATE=true make dev-all
 
 ## 开发管理员
 
-clean baseline migration 不创建管理域账号或固定密码。第一位安全管理员须通过独立 `AUTH_ADMIN_BOOTSTRAP_SECRET` 配置和请求头证明显式初始化，操作见[初始管理员安全](bootstrap-security.md)。旧 `AUTH_BOOTSTRAP_ADMIN_SECRET` 仍属于用户域兼容引导/本地恢复，不能自动开通管理域。不要把历史 `admin@campusos.local / Admin@123456` 当作管理端凭据，也不要把真实部署密码写回 migration、文档或 fixture。
+clean baseline migration 不创建管理域账号；正常应用首次启动时，空管理域会自动创建 `admin / admin` 超级管理员，在3001登录后可修改密码，后续启动不会重置已有密码。需要额外管理员时运行 `python3 scripts/bootstrap-admin.py`，只新增账号，不修改已有账号或系统配置。操作见[初始管理员安全](bootstrap-security.md)。旧 `AUTH_BOOTSTRAP_ADMIN_SECRET` 仍属于用户域兼容引导/本地恢复，用户域与管理域凭据不混用。
 
 ## 验证改动
 

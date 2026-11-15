@@ -9,8 +9,9 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// These primitives are used only by trusted local Admin recovery. The caller
-// locks the Admin account first; neither primitive reads the User domain.
+// These primitives protect Admin recovery, self password changes and scoped
+// runtime-config confirmation. The caller locks the Admin account first;
+// neither primitive reads the User domain or exposes credentials over HTTP.
 type AdminLocalRecoveryCredentialLocker interface {
 	GetCredentialForUpdate(context.Context, string) (AdminDomainCredential, error)
 }

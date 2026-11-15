@@ -8,6 +8,7 @@
     "build": "vue-tsc --noEmit && vite build",
     "preview": "vite preview",
     "smoke:browser": "node tests/browser-workflow.mjs",
+    "smoke:dialogs": "node tests/dialog-scroll-browser.mjs",
     "test:component": "vitest run",
     "lint": "eslint src",
     "format": "prettier --write \"**/*.{js,ts,vue,css,scss,json,md}\"",

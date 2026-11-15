@@ -9,6 +9,9 @@
       <button :disabled="busy" @click="reload">刷新工作区</button>
       <p v-if="busy" role="status">正在处理…</p>
       <p v-if="error" role="alert">{{ error }}</p>
+      <p v-if="knowledgeDisabled">
+        <router-link to="/features">打开内置功能，启用“知识检索”</router-link>，然后返回本页点击“刷新工作区”。
+      </p>
       <p v-if="notice" role="status">{{ notice }}</p>
       <p v-if="!canManage">当前为只读模式。写入需要知识集合管理权限。</p>
       <p v-else-if="!mfa">
@@ -287,8 +290,9 @@ const canManage = computed(
     admin.profile?.permission_codes.includes("knowledge.collection.manage") ===
     true,
 );
-const mfa = computed(() => admin.profile?.authentication_strength === "mfa");
+const mfa = computed(() => admin.profile?.mfa_required === false || admin.profile?.authentication_strength === "mfa");
 const busy = ref(false),
+  knowledgeDisabled = ref(false),
   loaded = ref(false),
   error = ref(""),
   notice = ref(""),
@@ -338,7 +342,7 @@ function clearDetail() {
 function failure(e: unknown) {
   const x = e as { status?: number; machineCode?: string };
   return x.machineCode === "knowledge.disabled"
-    ? "知识功能未启用，请到“内置功能”启用后刷新。"
+    ? "知识检索未启用，请到“内置功能”启用“知识检索”，再点击“刷新工作区”。"
     : x.status === 409
       ? "数据已变更，请刷新工作区后核对再提交。"
       : x.status === 403
@@ -349,11 +353,13 @@ async function run(action: () => Promise<void>) {
   if (busy.value || disposed) return;
   busy.value = true;
   error.value = "";
+  knowledgeDisabled.value = false;
   notice.value = "";
   try {
     await action();
   } catch (e) {
     if (!disposed) {
+      knowledgeDisabled.value = (e as { machineCode?: string })?.machineCode === "knowledge.disabled";
       error.value = failure(e);
       clearDetail();
       history.value = [];

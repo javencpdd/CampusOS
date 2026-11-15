@@ -59,7 +59,7 @@ func v5ManifestStructure(v any) bool {
 	return v5Object("api_version publisher key version host_contracts runtime provides consumes configuration data", map[string]v5Check{
 		"api_version": v5Enum("campusos.plugin/v5"), "publisher": v5Name, "key": v5Name, "version": v5Version,
 		"host_contracts": v5Array(1, 64, true, v5HostVersion), "runtime": v5Enum("none", "wasm", "container"),
-		"ui":      v5Array(1, 2, false, v5Object("audience entrypoint digest", map[string]v5Check{"audience": v5Enum("user", "admin"), "entrypoint": v5PackagePath, "digest": v5Digest})),
+		"ui":      v5Array(1, 2, false, v5Object("audience entrypoint digest", map[string]v5Check{"audience": v5Enum("user", "admin"), "entrypoint": v5PackagePath, "digest": v5Digest, "isolation": v5Enum("opaque")})),
 		"backend": v5Object("artifact transport", map[string]v5Check{"artifact": artifact, "transport": v5Enum("host-call", "http", "grpc")}),
 		"provides": v5Array(0, 32, false, v5Object("id point contract_version input_schema output_schema capabilities data_mode", map[string]v5Check{
 			"id": v5Name, "point": v5Point, "contract_version": v5Enum("v1"),

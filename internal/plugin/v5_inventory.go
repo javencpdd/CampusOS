@@ -3,6 +3,8 @@ package plugin
 import (
 	"context"
 	"encoding/json"
+	"strings"
+
 	identity "github.com/campusos/CampusOS/internal/modules/core/identity/port"
 )
 
@@ -34,6 +36,18 @@ type V5InventoryEntry struct {
 	Consent       *V5Consent       `json:"consent,omitempty"`
 	Configuration *V5Configuration `json:"configuration,omitempty"`
 	PurposeHash   string           `json:"purpose_hash"`
+	SiteState     *V5SiteState     `json:"site_state,omitempty"`
+}
+
+// V5SiteState is a display-only summary for the current visible release. It
+// excludes system configuration, generations, recovery pointers and authority
+// material; execution and UI issuance still recheck current facts.
+type V5SiteState struct {
+	Installed bool   `json:"installed"`
+	Enabled   bool   `json:"enabled"`
+	Ready     bool   `json:"ready"`
+	Observed  string `json:"observed"`
+	Error     string `json:"error_code,omitempty"`
 }
 type V5InventoryPage struct {
 	Items []V5InventoryEntry `json:"items"`
@@ -68,6 +82,13 @@ func (s *V5Platform) Inventory(ctx context.Context, admin bool, after string, li
 		query := v5Query{After: after, Limit: limit + 1, Now: s.now().UnixMilli()}
 		if !admin {
 			query.VisibleOwner = a.p.Actor.ID
+			// Accept a previous version cursor, while new user cursors remain
+			// stable across site upgrades and cannot reintroduce the same family.
+			if family, version, ok := strings.Cut(after, "@"); ok {
+				if publisher, key, ok := strings.Cut(family, "/"); ok && (V5Coordinate{publisher, key, version}).valid() {
+					query.After = family
+				}
+			}
 		}
 		rows, err := s.store.list(tx, kind, query)
 		if err != nil {
@@ -94,7 +115,7 @@ func (s *V5Platform) Inventory(ctx context.Context, admin bool, after string, li
 			if len(rows) > limit {
 				out.Next = v5RecordID(kind, raw)
 				if !admin {
-					out.Next = c.id()
+					out.Next = c.family()
 				}
 			}
 		}
@@ -120,12 +141,17 @@ func (s *V5Platform) entry(ctx context.Context, c V5Coordinate, a v5Actor, priva
 	if gerr != nil && gerr != ErrV5NotFound {
 		return out, gerr
 	}
+	var globalState *V5Installation
 	if !a.admin {
 		global, e := s.installation(ctx, c, "")
+		if e != nil && e != ErrV5NotFound {
+			return out, e
+		}
 		visible := e == nil && global.Installed && global.Version == c.Version && gerr == nil && v5GrantActive(g, s.now().UnixMilli())
 		if !visible && !(ierr == nil && (private || i.Installed) && (i.Version == c.Version || i.DesiredVersion == c.Version)) {
 			return out, ErrV5NotFound
 		}
+		globalState = &global
 	}
 	out.Release = r
 	if ierr == nil {
@@ -148,17 +174,28 @@ func (s *V5Platform) entry(ctx context.Context, c V5Coordinate, a v5Actor, priva
 	if err != nil {
 		return out, err
 	}
+	_, compatibilityErr := ValidatePluginV5SourceDeclaration(r.Manifest)
 	out.PurposeHash = V5PurposeHash(m)
-	if private {
-		if owner != "" {
-			var consent V5Consent
-			e := s.store.load(ctx, v5Consent, v5VersionOwnerID(c, owner), &consent)
-			if e == nil {
-				out.Consent = &consent
-			} else if e != ErrV5NotFound {
-				return out, e
-			}
+	if globalState != nil {
+		global := globalState
+		installed := global.Installed && global.Version == c.Version
+		enabled := installed && global.DesiredVersion == c.Version && global.Desired == "enabled"
+		ready := enabled && compatibilityErr == nil && gerr == nil && v5GrantCompleteAt(m, g, s.now().UnixMilli()) &&
+			(m.Runtime == "none" && s.uiHostReady.Load() || global.Observed == "ready" && global.ActiveGeneration == global.Generation)
+		out.SiteState = &V5SiteState{Installed: installed, Enabled: enabled, Ready: ready, Observed: global.Observed, Error: global.Error}
+	}
+	// A user's own consent is safe list metadata, needed to distinguish a saved
+	// consent from a local checkbox. Other owners and configuration stay private.
+	if owner != "" {
+		var consent V5Consent
+		e := s.store.load(ctx, v5Consent, v5VersionOwnerID(c, owner), &consent)
+		if e == nil {
+			out.Consent = &consent
+		} else if e != ErrV5NotFound {
+			return out, e
 		}
+	}
+	if private {
 		if a.admin && m.Data.ConfigScope != "user" || !a.admin && m.Data.ConfigScope != "system" {
 			cfg, e := s.configuration(ctx, c, owner, m)
 			if e != nil {

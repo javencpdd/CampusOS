@@ -94,6 +94,7 @@
             <el-menu-item index="/architecture">数据架构</el-menu-item>
             <el-menu-item index="/events">事件日志</el-menu-item>
             <el-menu-item index="/platform-logs">平台日志</el-menu-item>
+            <el-menu-item v-if="adminStore.profile?.permission_codes.includes('platform.runtime_config.read')" index="/runtime-config">运行配置</el-menu-item>
             <el-menu-item v-if="adminStore.isAdmin" index="/reliability"
               >可靠任务</el-menu-item
             >
@@ -152,6 +153,7 @@
                 "管理员"
               }}
             </span>
+            <el-button text @click="router.push('/account/security')">修改密码</el-button>
             <el-button
               v-if="adminStore.profile?.mfa_required !== false"
               text
@@ -176,7 +178,7 @@
             "
             type="info"
             :closable="false"
-            title="管理员二次验证已开启：首次敏感操作前，请先配置认证器。"
+            title="管理员MFA已开启：可先配置认证器；修改运行配置也可使用管理员密码验证。"
           >
             <el-button text @click="mfaStepUpOpen = true"
               >查看配置引导</el-button
@@ -251,6 +253,7 @@ const currentPageTitle = computed(() => {
     "/permissions": "角色与权限",
     "/admin-admission": "管理员准入",
     "/mfa-policy": "管理员 MFA 策略",
+    "/account/security": "修改管理员密码",
     "/account-recovery": "账号恢复",
     "/challenge-policy": "验证码策略",
     "/academic-terms": "学期治理",
@@ -268,6 +271,7 @@ const currentPageTitle = computed(() => {
     "/reviews": "帖子审核",
     "/events": "事件日志",
     "/platform-logs": "平台日志",
+    "/runtime-config": "运行配置",
     "/reliability": "可靠任务",
     "/asset-governance": "附件治理",
   };

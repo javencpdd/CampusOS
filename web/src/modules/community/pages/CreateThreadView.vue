@@ -32,6 +32,7 @@
         </div>
       </template>
 
+      <el-alert v-if="importNotice" :title="importNotice" type="warning" :closable="false" class="import-notice" />
       <el-form
         v-if="templateMode === 'plain_text'"
         :model="plainForm"
@@ -310,6 +311,7 @@ import CheckedHTML from '@/modules/content-editor/CheckedHTML.vue'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import { categoryApi, threadApi } from '@/modules/community/api'
+import { takeImportedArticle } from '@/campus-ui/importedArticle'
 import { richTextApi } from '@/modules/richtext/api'
 import { personalDocumentsApi } from '@/modules/personal-documents/api'
 import { mutualAidApi } from '@/modules/mutual-aid/api'
@@ -336,6 +338,7 @@ const mutualAidEnabled = ref(true)
 const secondhandEnabled = ref(true)
 const draftThreadId = ref('')
 const articleContentId = ref('')
+const importNotice = ref('')
 const previewVisible = ref(false)
 const previewHtml = ref('')
 const coverInput = ref<HTMLInputElement | null>(null)
@@ -915,6 +918,22 @@ onMounted(async () => {
   initializingPlain.value = false
   articleDirty.value = false
   plainDirty.value = false
+  if (typeof route.query.plugin_import === 'string' && !isEditMode.value) {
+    const imported = takeImportedArticle(route.query.plugin_import)
+    if (imported && richTextEnabled.value) {
+      templateMode.value = 'richtext'
+      publishMode.value = 'richtext'
+      articleForm.title = imported.title
+      articleForm.summary = imported.summary
+      articleForm.content_html = imported.content_html
+      articleForm.cover_url = imported.cover_url
+      importNotice.value = [
+        '已导入插件图文，请核对内容、图片、来源及转载权限，选择版块后手动发布。',
+        ...imported.warnings,
+      ].join(' ')
+      articleDirty.value = true
+    } else importNotice.value = '导入已失效或图文功能未启用，请返回提供内容的插件重新操作。'
+  }
   window.addEventListener('beforeunload', handleBeforeUnload)
 })
 
@@ -927,6 +946,9 @@ onBeforeUnmount(() => {
 .create-thread {
   max-width: 920px;
   margin: 0 auto;
+}
+.import-notice {
+  margin-bottom: 16px;
 }
 .editor-card {
   border-radius: 8px;

@@ -30,6 +30,7 @@ type V5PackageRelease struct {
 	Revision int64           `json:"revision,string"`
 }
 type V5Installation struct {
+	CompanionGeneration   int64        `json:"companion_generation,string,omitempty"`
 	Publisher             string       `json:"publisher"`
 	Key                   string       `json:"plugin_key"`
 	Owner                 string       `json:"owner_user_id"`
@@ -260,14 +261,16 @@ func (s *MemoryV5StateStore) list(ctx context.Context, k v5RecordKind, q v5Query
 			var g V5Grant
 			_ = json.Unmarshal(s.records[v5Grant][i.coordinate().id()], &g)
 			if i.Installed && v5GrantActive(g, q.Now) {
-				visible[i.coordinate().id()] = raw
+				visible[i.coordinate().family()] = raw
 			}
 		}
 		for _, raw := range s.records[v5User] {
 			var i V5Installation
 			_ = json.Unmarshal(raw, &i)
 			if i.Installed && i.Owner == q.VisibleOwner {
-				visible[i.coordinate().id()] = raw
+				if _, currentVisible := visible[i.coordinate().family()]; !currentVisible {
+					visible[i.coordinate().family()] = raw
+				}
 			}
 		}
 		ids := []string{}

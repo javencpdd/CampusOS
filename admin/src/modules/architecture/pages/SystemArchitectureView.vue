@@ -10,7 +10,7 @@
         </p>
       </div>
       <el-tag type="info" effect="plain"
-        >当前迁移 000001 - 000035（v1.1 基线 + v1.2
+        >当前迁移 000001 - 000036（v1.1 基线 + v1.2
         授权审计/插件版本/配置仓储/身份委托/管理身份域/管理员会话/MFA
         恢复/准入解耦/管理域授权/FK 索引补齐/帖子与管理权限事实版本/v5包身份账本/安装/独立元数据队列/受管AI模型）</el-tag
       >
@@ -30,8 +30,8 @@
       <el-tab-pane label="数据库关系" name="database">
         <section class="toolbar-band">
           <div>
-            <strong>ER 逻辑关系图</strong>
-            <p>点击任意表卡片查看用途、关键字段和迁移来源。</p>
+            <strong>Chen 经典 ER 逻辑关系图</strong>
+            <p>矩形表示实体、椭圆表示属性、菱形表示联系。领域筛选可选实体，图中保留所选实体的跨域关联。</p>
           </div>
           <el-radio-group v-model="domainFilter" aria-label="数据库领域筛选">
             <el-radio-button label="all">全部</el-radio-button>
@@ -42,47 +42,13 @@
         </section>
 
         <div class="database-layout">
-          <section class="relation-board" aria-label="数据库逻辑关系图">
-            <article
-              v-for="relation in visibleRelations"
-              :key="relation.id"
-              class="relation-lane"
-            >
-              <button
-                class="table-node"
-                :class="`domain-${tableByName(relation.source).domain}`"
-                type="button"
-                :aria-pressed="selectedTable === relation.source"
-                @click="selectedTable = relation.source"
-              >
-                <span class="node-domain">{{
-                  domainLabel(tableByName(relation.source).domain)
-                }}</span>
-                <strong>{{ relation.source }}</strong>
-                <small>{{ tableByName(relation.source).title }}</small>
-              </button>
-              <div class="relation-link">
-                <span>{{ relation.sourceCardinality }}</span>
-                <i></i>
-                <em>{{ relation.label }}</em>
-                <i></i>
-                <span>{{ relation.targetCardinality }}</span>
-              </div>
-              <button
-                class="table-node"
-                :class="`domain-${tableByName(relation.target).domain}`"
-                type="button"
-                :aria-pressed="selectedTable === relation.target"
-                @click="selectedTable = relation.target"
-              >
-                <span class="node-domain">{{
-                  domainLabel(tableByName(relation.target).domain)
-                }}</span>
-                <strong>{{ relation.target }}</strong>
-                <small>{{ tableByName(relation.target).title }}</small>
-              </button>
-            </article>
-          </section>
+          <ChenDiagram
+            :focus="selectedTable"
+            :entities="databaseTables"
+            :options="visibleTables"
+            :relations="chenRelations"
+            @select="selectEntity"
+          />
 
           <aside class="table-inspector" aria-live="polite">
             <div class="inspector-heading">
@@ -97,9 +63,15 @@
             </div>
             <p class="table-purpose">{{ currentTable.purpose }}</p>
             <el-descriptions :column="1" border size="small">
-              <el-descriptions-item label="关键字段">
+              <el-descriptions-item label="标识符">
+                {{ schemaFacts[currentTable.name].primaryKey.join(' + ') }}
+              </el-descriptions-item>
+              <el-descriptions-item label="实体类型">
+                {{ weakEntities[currentTable.name] ? '弱实体，依赖 ' + weakEntities[currentTable.name].owner + ' 标识' : '实体' }}
+              </el-descriptions-item>
+              <el-descriptions-item label="全部字段">
                 <div class="field-list">
-                  <code v-for="field in currentTable.fields" :key="field">{{
+                  <code v-for="field in schemaFacts[currentTable.name].columns" :key="field" :class="{ 'is-key': schemaFacts[currentTable.name].primaryKey.includes(field) }">{{
                     field
                   }}</code>
                 </div>
@@ -296,6 +268,8 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
+import ChenDiagram from "../components/ChenDiagram.vue";
+import { buildChenRelations, schemaFacts, weakEntities } from "../chen-model";
 import {
   Connection,
   DataAnalysis,
@@ -3022,6 +2996,7 @@ const relations: Relation[] = [
 ];
 
 const storageRows = [
+ {path:"受管部署 .env / .env.dev.local 及同名 .bak",category:"运行配置",type:"primary",purpose:"当前部署文件是唯一事实源；仅独立Admin按白名单编辑，SMTP凭据不回传。",contents:["同目录原子替换，备份仅保留上一份，文件0600", "配置及备份均含部署秘密，位于普通业务备份集合外，不能作为静态资源提供"],note:"CAMPUSOS_MANAGED_ENV_FILE由部署者指定；API重启仅读取白名单字段，不覆盖数据库、监听端口、加密密钥或Compose网络。权限迁移000036不存储配置值。"},
  {path:"PostgreSQL ai_model_* / 独立AI密钥",category:"受管模型与预算",type:"primary",purpose:"持久模型绑定、AEAD凭据密文、请求单位预算与执行事件，无Prompt或答案。",contents:["主密钥AI_ENCRYPTION_KEYS由部署单独托管，不进入应用备份","恢复隔离停用Profile并推进绑定；只结算未决请求，不重放、不清零预算"],note:"本地模型由运维预先运行；网关固定loopback端点，不安装模型或启动守护进程。缺钥/错钥失败关闭。"},
  {path:"KNOWLEDGE_PRIVATE_KEY_DIR（外置目录）",category:"私人索引密钥",type:"primary",purpose:"Linux0700目录/0600每选择密钥和不可复用的退役标记，位于所有应用备份来源之外。",contents:["每次本人选择独立AES-GCM密钥；数据库/WAL/应用备份只含密文", "撤回先fsync退役标记并删钥，旧数据库恢复不能恢复已撤回密钥", "退役标记永久保留；不保存正文或owner名称，密钥不进入应用备份"],note:"未配置/权限不足/缺钥/Windows未验收时禁止私人索引；丢钥需本人重新选择重建，不从旧备份恢复授权或退役密钥。"},
  { path: "PostgreSQL / plugin_v5_event_deliveries", category: "v5 事件证据", type: "primary", purpose: "独立于Core Outbox的元数据投递及重试证据。", contents: ["白名单资源引用、状态、修订与5分钟期限", "实例代次、单赢家租约、5次尝试与死信"], note: "禁止正文/Prompt/Secret或请求自证提交；备份与v5目录一同保留，重启后旧凭据和发布不恢复。" },
@@ -3143,6 +3118,7 @@ const storageRows = [
 ];
 
 const migrations = [
+  {version: "000036", file: "000036_runtime_config_permissions.up.sql", title: "受管运行配置权限", scope: "独立Admin", summary: "只增加脱敏读取与高风险保存/重启权限；默认授予security_admin，无新表。存在非种子授权时拒绝回退；保留配置文件与备份。", tables: ["permission_definitions", "admin_role_permissions"]},
   {version: "000035", file: "000035_ai_managed_gateway.up.sql", title: "v1.2 受管 AI 模型与执行", scope: "内置文本模型", summary: "六表持久Profile/Secret/Binding/请求预算/执行/顺序事件；独立Admin管理权限。非空拒绝down，保留非复用版本序列。", tables: ["ai_model_profiles", "ai_model_secrets", "ai_model_bindings", "ai_model_budgets", "ai_model_runs", "ai_model_run_events"]},
  {version:"000034",file:"000034_knowledge_private_index.up.sql",title:"v1.2 私人来源与加密索引任务",scope:"Knowledge 本人逐项选择",summary:"默认不入库、每选择AEAD密文与外置密钥、耐久任务及非复用租约围栏；撤回/源失效删钥和级联清理。非空拒绝down。",tables:["knowledge_private_sources","knowledge_private_tasks"]},
  {version:"000033",file:"000033_knowledge_index_execution.up.sql",title:"v1.2 公开知识索引执行与投影",scope:"Knowledge 有界分页对账",summary:"独立任务租约/有限重试/持久断点和公开文本投影；来源/规则修订与Profile指纹、原子整页提交、周期消失目标清理。非空拒绝down，保留版本序列高水位，不改旧表。",tables:["knowledge_index_jobs","knowledge_index_documents"]},
@@ -3405,6 +3381,12 @@ const migrations = [
 const tableByName = (name: string) =>
   databaseTables.find((table) => table.name === name) || databaseTables[0];
 const currentTable = computed(() => tableByName(selectedTable.value));
+const chenRelations = buildChenRelations(databaseTables, relations);
+function selectEntity(name: string) {
+  if (!databaseTables.some(table => table.name === name)) return;
+  if (!visibleTables.value.some(table => table.name === name)) domainFilter.value = 'all';
+  selectedTable.value = name;
+}
 
 const visibleTables = computed(() => {
   if (domainFilter.value === "all") return databaseTables;
@@ -3422,23 +3404,7 @@ const visibleTables = computed(() => {
   );
 });
 
-const visibleRelations = computed(() => {
-  if (domainFilter.value === "all") return relations;
-  if (domainFilter.value === "identity")
-    return relations.filter((relation) =>
-      relation.domains.some(
-        (domain) => domain === "identity" || domain === "community",
-      ),
-    );
-  if (domainFilter.value === "space")
-    return relations.filter((relation) => relation.domains.includes("space"));
-  return relations.filter((relation) =>
-    relation.domains.some(
-      (domain) =>
-        domain === "plugin" || domain === "integration" || domain === "system",
-    ),
-  );
-});
+
 
 const domainLabel = (domain: Domain) =>
   ({
@@ -3522,7 +3488,7 @@ watch(domainFilter, () => {
 }
 .database-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1.7fr) minmax(300px, 0.8fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 16px;
   margin-top: 16px;
 }
@@ -3620,8 +3586,9 @@ watch(domainFilter, () => {
   line-height: 1.25;
   text-overflow: ellipsis;
 }
+.field-list .is-key { font-weight: 700; text-decoration: underline; }
 .table-inspector {
-  position: sticky;
+  position: static;
   top: 12px;
   align-self: start;
   padding: 18px;

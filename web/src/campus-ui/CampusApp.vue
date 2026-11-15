@@ -172,7 +172,9 @@
           :node="surface.schema!"
           :plugin="surface.plugin"
       /></template>
-      <template #page-outlet><router-view /></template>
+      <template #page-outlet
+        ><router-view :key="route.path.startsWith('/extensions/') ? userStore.token || 'anonymous' : undefined"
+      /></template>
       <template v-if="slotSurfaces('right-sidebar').length" #right-sidebar
         ><DeclarativeRenderer
           v-for="surface in slotSurfaces('right-sidebar')"
@@ -279,9 +281,9 @@ const closeMobileNavigation = () => {
   mobileNavigationOpen.value = false
 }
 const openCategoryBoard = (categoryID: string) => router.push({ path: '/threads', query: { category_id: categoryID } })
-const handleLogout = () => {
-  userStore.logout()
-  router.push('/login')
+const handleLogout = async () => {
+  await userStore.logout()
+  await router.replace('/login')
 }
 
 const loadCategoryNavigation = async () => {

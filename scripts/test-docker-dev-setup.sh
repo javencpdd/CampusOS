@@ -19,6 +19,9 @@ cat >"$TEMP_DIR/bin/docker" <<'EOF'
 if [[ -n "${MOCK_DOCKER_LOG:-}" ]]; then
   printf '%s\n' "$*" >>"$MOCK_DOCKER_LOG"
 fi
+if [[ -n "${MOCK_MANAGED_CONFIG_LOG:-}" ]]; then
+  printf '%s\n' "managed=${CAMPUSOS_DEV_MANAGED_ENV_FILE:-}" >>"$MOCK_MANAGED_CONFIG_LOG"
+fi
 case "${1:-} ${2:-}" in
   "compose version"|"info ") exit 0 ;;
 esac
@@ -186,5 +189,17 @@ MOCK_DOCKER_LOG="$TEMP_DIR/rebuild-docker.log" PATH="$TEMP_DIR/bin:$PATH" \
   "$ROOT_DIR/scripts/docker-dev.sh" rebuild >"$TEMP_DIR/rebuild.out"
 grep -q 'Rebuilding Docker development application images before startup' "$TEMP_DIR/rebuild.out"
 grep -q 'up -d --build --force-recreate --wait --wait-timeout 600 plugin-ui api web admin docs' "$TEMP_DIR/rebuild-docker.log"
+
+# A custom deployment must never edit the standard deployment's environment.
+MOCK_MANAGED_CONFIG_LOG="$TEMP_DIR/custom-managed.log" PATH="$TEMP_DIR/bin:$PATH" \
+  CAMPUSOS_DOCKER_DEV_ENV="$VALID_ENV" \
+  "$ROOT_DIR/scripts/docker-dev.sh" config >"$TEMP_DIR/custom-managed.out"
+grep -qx 'managed=' "$TEMP_DIR/custom-managed.log"
+
+# Standard local configuration maps to the fixed, bind-mounted container path.
+MOCK_MANAGED_CONFIG_LOG="$TEMP_DIR/standard-managed.log" PATH="$TEMP_DIR/bin:$PATH" \
+  CAMPUSOS_DOCKER_DEV_ENV="$ROOT_DIR/deploy/docker/.env.dev.local" \
+  "$ROOT_DIR/scripts/docker-dev.sh" ps >"$TEMP_DIR/standard-managed.out"
+grep -qx 'managed=/workspace/deploy/docker/.env.dev.local' "$TEMP_DIR/standard-managed.log"
 
 echo "Docker development setup guidance tests passed."

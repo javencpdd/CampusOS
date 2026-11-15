@@ -80,6 +80,7 @@ export type PluginV5AdminInstallationCommand = Exclude<PluginV5InstallationComma
     consumes: PluginV5Consume[];
     host_resources?: NonNullable<PluginV5Manifest["host_resources"]>;
     reason?: string;
+    /** Zero/omitted is revocable permanent approval; otherwise future Unix milliseconds, through year 9999. */
     expires_at_ms?: string;
 } | {
     kind: "revoke";

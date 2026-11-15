@@ -72,6 +72,7 @@ services:
       CAMPUSOS_DEV_GID: ${CAMPUSOS_DEV_GID:-1000}
       CAMPUSOS_DEV_POLL_INTERVAL: ${CAMPUSOS_DEV_POLL_INTERVAL:-1}
       CAMPUSOS_LOG_DIR: /workspace/.campusos/logs
+      CAMPUSOS_MANAGED_ENV_FILE: ${CAMPUSOS_DEV_MANAGED_ENV_FILE:-}
       GOPROXY: ${DOCKER_BUILD_GOPROXY:-https://goproxy.cn|https://proxy.golang.org|direct}
       GOSUMDB: ${DOCKER_BUILD_GOSUMDB:-sum.golang.google.cn}
       GOFLAGS: -buildvcs=false
@@ -125,6 +126,9 @@ services:
       PLUGINS_DIR: data/plugins
       # Explicitly imported v5 packages only; trust is supplied by the operator.
       CAMPUSOS_PLUGIN_V5_TRUST_STORE: ${CAMPUSOS_PLUGIN_V5_TRUST_STORE:-}
+      CAMPUSOS_PLUGIN_WEB_PROXY_PROFILES: ${CAMPUSOS_PLUGIN_WEB_PROXY_PROFILES:-}
+      CAMPUSOS_PLUGIN_WEB_PROXY_PROFILE: ${CAMPUSOS_PLUGIN_WEB_PROXY_PROFILE:-}
+      CAMPUSOS_WEB_COMPANION_TOOLS_DIR: ${CAMPUSOS_WEB_COMPANION_TOOLS_DIR:-.campusos/tools/web-companion}
       CAMPUSOS_PLUGIN_UI_LISTEN: 0.0.0.0:3004
       CAMPUSOS_PLUGIN_UI_ORIGIN: "${CAMPUSOS_PLUGIN_UI_SCHEME:-http}://{isolation}.${CAMPUSOS_PLUGIN_UI_DOMAIN:-localhost}:${CAMPUSOS_DEV_PLUGIN_UI_PORT:-3003}"
       CAMPUSOS_PLUGIN_UI_PARENTS: ${CAMPUSOS_PLUGIN_UI_PARENTS:-http://localhost:3000 http://localhost:3001}

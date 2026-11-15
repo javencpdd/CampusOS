@@ -31,6 +31,7 @@ import (
 	platformfeature "github.com/campusos/CampusOS/internal/platform/feature"
 	"github.com/campusos/CampusOS/internal/platform/reliability"
 	platformroute "github.com/campusos/CampusOS/internal/platform/route"
+	"github.com/campusos/CampusOS/internal/platform/runtimeconfig"
 	"github.com/campusos/CampusOS/internal/plugin"
 	modulecatalog "github.com/campusos/CampusOS/modules"
 	"github.com/campusos/CampusOS/pkg/auth"
@@ -74,6 +75,7 @@ type Dependencies struct {
 	Knowledge         *knowledge.Handler
 	MutualAid         *mutualaid.Handler
 	Secondhand        *secondhand.Handler
+	RuntimeConfig     *runtimeconfig.Handler
 	PlatformLog       *platformlog.Handler
 	Moderation        *moderation.Handler
 	Reliability       *reliability.Handler
@@ -170,6 +172,10 @@ func Build(d Dependencies) *Router {
 		public.POST("/auth/registration/verify", userHandler.VerifyRegistrationChallenge)
 		public.POST("/auth/register", userHandler.Register)
 		public.POST("/auth/login", userHandler.Login)
+		public.Operation("http.web_companion.agent.connect").POST("/web-companion/connect", d.PluginV5.CompanionConnect)
+		public.Operation("http.web_companion.agent.poll").POST("/web-companion/poll", d.PluginV5.CompanionPoll)
+		public.Operation("http.web_companion.agent.result").POST("/web-companion/result", d.PluginV5.CompanionResult)
+		public.Operation("http.plugin.v5.ui_asset").GET("/plugin-v5/ui-assets/:lease/*asset", d.PluginV5.OpaqueUIAsset)
 		public.POST("/auth/admin/login", userHandler.AdminLogin)
 		public.Operation("http.identity.admin_session.login").POST("/admin/identity/login", d.Identity.AdminDomain.Login)
 		public.Operation("http.identity.admin_session.refresh").POST("/admin/identity/refresh", d.Identity.AdminDomain.Refresh)
@@ -235,6 +241,8 @@ func Build(d Dependencies) *Router {
 		authenticated.POST("/auth/email-binding/verify", userHandler.VerifyEmailBinding)
 		authenticated.POST("/auth/email-binding/complete", userHandler.CompleteEmailBinding)
 		authenticated.GET("/auth/me", userHandler.GetMe)
+		authenticated.Operation("http.web_companion.user.download").GET("/web-companion/tools/:platform", d.PluginV5.CompanionDownload)
+		authenticated.Operation("http.plugin.v5.user.ui_action").POST("/plugin-v5/:publisher/:key/:version/ui-actions", d.PluginV5.UIAction)
 		authenticated.PUT("/users/:id", userHandler.UpdateUser)
 		authenticated.Operation("http.personal_space.owner_profile.read").GET("/spaces/me", d.Space.GetMe)
 		authenticated.Operation("http.personal_space.owner_contents.read").GET("/spaces/me/contents", d.Space.ListOwnContents)
@@ -388,6 +396,7 @@ func Build(d Dependencies) *Router {
 	authenticatedAdminSelf.Use(func(c *gin.Context) { c.Header("Cache-Control", "private, no-store"); c.Next() }, middleware.RequireAdminDomainAccess(d.AdminJWT, d.AdminSessions, nil))
 	authenticatedAdminSelf.Operation("http.identity.admin_self.read").Scoped("current-admin-self").GET("/admin/identity/me", d.Identity.AdminDomain.Me)
 	authenticatedAdminSelf.Operation("http.identity.admin_self.logout").Scoped("current-admin-self").POST("/admin/identity/logout", d.Identity.AdminDomain.Logout)
+	authenticatedAdminSelf.Operation("http.identity.admin_self.password.change").Scoped("current-admin-self").POST("/admin/identity/password", d.Identity.AdminDomain.ChangePassword)
 	authenticatedAdminSelf.Operation("http.identity.admin_self.mfa.enroll").Scoped("current-admin-self").POST("/admin/identity/mfa/enroll", d.Identity.AdminDomain.EnrollTOTP)
 	authenticatedAdminSelf.Operation("http.identity.admin_self.mfa.confirm").Scoped("current-admin-self").POST("/admin/identity/mfa/confirm", d.Identity.AdminDomain.ConfirmTOTP)
 	authenticatedAdminSelf.Operation("http.identity.admin_self.mfa.step_up").Scoped("current-admin-self").POST("/admin/identity/mfa/step-up", d.Identity.AdminDomain.StepUp)
@@ -543,6 +552,9 @@ func Build(d Dependencies) *Router {
 	admin.Permission("message", "read").GET("/messages/logs", d.Message.ListMessages)
 	admin.Permission("message", "write").POST("/messages/bindings", d.Message.CreateBinding)
 	admin.Permission("message", "read").GET("/messages/summary", d.Message.Summary)
+	admin.PermissionCode("platform.runtime_config.read").Operation("http.platform.runtime_config.read").GET("/platform/runtime-config", d.RuntimeConfig.Read)
+	admin.PermissionCode("platform.runtime_config.manage").Operation("http.platform.runtime_config.update").PUT("/platform/runtime-config", d.RuntimeConfig.Update)
+	admin.PermissionCode("platform.runtime_config.manage").Operation("http.platform.runtime_config.document").POST("/platform/runtime-config/document", d.RuntimeConfig.Document)
 	admin.Permission("platform_log", "read").GET("/platform/logs/sources", d.PlatformLog.Sources)
 	admin.Permission("platform_log", "read").GET("/platform/logs/stream", d.PlatformLog.Stream)
 	admin.PermissionCode("platform.reliability.read").Operation("http.platform.reliability.summary").GET("/platform/reliability/summary", d.Reliability.Summary)

@@ -8,6 +8,7 @@ import (
 )
 
 type Config struct {
+	Managed       ManagedConfig `json:"-"`
 	Server        ServerConfig
 	HostAPI       HostAPIConfig
 	Observability ObservabilityConfig
@@ -78,9 +79,9 @@ type AuthConfig struct {
 	MFAIssuer                    string
 }
 
-// EmailConfig contains process-only email delivery settings. It is never
-// returned by an HTTP endpoint; the Admin surface exposes only provider health
-// and a redacted generic delivery error.
+// EmailConfig contains process-owned email delivery settings. The runtime
+// editor exposes an explicit ordinary-field catalog; SMTPPassword is never
+// returned over HTTP. Delivery health and failures remain redacted.
 type EmailConfig struct {
 	Provider     string
 	SMTPHost     string
@@ -93,12 +94,15 @@ type EmailConfig struct {
 }
 
 type PluginConfig struct {
-	DataDir          string
-	WasmImage        string
-	ContainerEnabled bool
-	UIListen         string
-	UIOrigin         string
-	UIParents        []string
+	CompanionToolsDir string
+	WebProxyProfiles  string
+	WebProxyProfile   string
+	DataDir           string
+	WasmImage         string
+	ContainerEnabled  bool
+	UIListen          string
+	UIOrigin          string
+	UIParents         []string
 }
 
 // DeploymentConfig makes local-provider safety explicit. v0.9 supports one
@@ -136,14 +140,43 @@ type WebhookConfig struct {
 
 func Load() *Config {
 	fileEnv := loadDotEnv(".env")
+	managed := ManagedConfig{Path: strings.TrimSpace(os.Getenv("CAMPUSOS_MANAGED_ENV_FILE")), Values: map[string]string{}}
+	var overrides map[string]string
+	if managed.Path != "" {
+		doc, err := ReadRuntimeDocument(managed.Path)
+		managed.Error = err
+		if err == nil {
+			overrides = doc.Values
+		}
+	}
+	known := map[string]bool{}
+	for _, f := range RuntimeFields() {
+		known[f.Key] = true
+	}
 	get := func(key, fallback string) string {
-		return getEnvWithFile(fileEnv, key, fallback)
+		v := getEnvWithFile(fileEnv, key, fallback)
+		if override, ok := overrides[key]; ok {
+			v = override
+		}
+		if known[key] {
+			managed.Values[key] = v
+		}
+		return v
 	}
 	getInt := func(key string, fallback int) int {
-		return getEnvIntWithFile(fileEnv, key, fallback)
+		if n, err := strconv.Atoi(get(key, strconv.Itoa(fallback))); err == nil {
+			return n
+		}
+		return fallback
 	}
 	getBool := func(key string, fallback bool) bool {
-		return getEnvBoolWithFile(fileEnv, key, fallback)
+		switch strings.ToLower(strings.TrimSpace(get(key, strconv.FormatBool(fallback)))) {
+		case "1", "true", "yes", "on":
+			return true
+		case "0", "false", "no", "off":
+			return false
+		}
+		return fallback
 	}
 	environment := strings.ToLower(strings.TrimSpace(get("CAMPUSOS_ENV", "development")))
 	mfaActiveKeyID := ""
@@ -153,7 +186,7 @@ func Load() *Config {
 		mfaKeyRing = "development-v1:campusos-development-mfa-encryption-key-change-before-production"
 	}
 
-	return &Config{
+	cfg := &Config{
 		Server: ServerConfig{
 			Host: get("SERVER_HOST", "0.0.0.0"),
 			Port: get("SERVER_PORT", "8080"),
@@ -211,12 +244,15 @@ func Load() *Config {
 			SMTPStartTLS: getBool("EMAIL_SMTP_STARTTLS", true),
 		},
 		Plugin: PluginConfig{
-			DataDir:          get("PLUGIN_DATA_DIR", "data/plugin_data"),
-			WasmImage:        strings.TrimSpace(get("CAMPUSOS_PLUGIN_WASM_IMAGE", "")),
-			ContainerEnabled: getBool("CAMPUSOS_PLUGIN_CONTAINER_ENABLED", false),
-			UIListen:         strings.TrimSpace(get("CAMPUSOS_PLUGIN_UI_LISTEN", "")),
-			UIOrigin:         strings.TrimSpace(get("CAMPUSOS_PLUGIN_UI_ORIGIN", "")),
-			UIParents:        strings.Fields(get("CAMPUSOS_PLUGIN_UI_PARENTS", "")),
+			CompanionToolsDir: get("CAMPUSOS_WEB_COMPANION_TOOLS_DIR", ".campusos/tools/web-companion"),
+			WebProxyProfiles:  get("CAMPUSOS_PLUGIN_WEB_PROXY_PROFILES", ""),
+			WebProxyProfile:   get("CAMPUSOS_PLUGIN_WEB_PROXY_PROFILE", ""),
+			DataDir:           get("PLUGIN_DATA_DIR", "data/plugin_data"),
+			WasmImage:         strings.TrimSpace(get("CAMPUSOS_PLUGIN_WASM_IMAGE", "")),
+			ContainerEnabled:  getBool("CAMPUSOS_PLUGIN_CONTAINER_ENABLED", false),
+			UIListen:          strings.TrimSpace(get("CAMPUSOS_PLUGIN_UI_LISTEN", "")),
+			UIOrigin:          strings.TrimSpace(get("CAMPUSOS_PLUGIN_UI_ORIGIN", "")),
+			UIParents:         strings.Fields(get("CAMPUSOS_PLUGIN_UI_PARENTS", "")),
 		},
 		Deployment: DeploymentConfig{
 			InstanceMode: strings.ToLower(get("CAMPUSOS_INSTANCE_MODE", "single")),
@@ -245,6 +281,8 @@ func Load() *Config {
 			AllowPrivateNetwork: getBool("WEBHOOK_ALLOW_PRIVATE_NETWORK", false),
 		},
 	}
+	cfg.Managed = managed
+	return cfg
 }
 
 func splitCSV(value string) []string {

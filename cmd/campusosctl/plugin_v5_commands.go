@@ -22,7 +22,7 @@ func runPlugin(args []string, stdout, stderr io.Writer) int {
 		return 2
 	}
 	if args[0] == "help" || args[0] == "--help" || args[0] == "-h" {
-		fmt.Fprintln(stdout, "plugin init|validate|inspect|pack|sign|verify|catalog: offline v5 package tools; install, approve, configure and enable through the host Web/Admin")
+		fmt.Fprintln(stdout, "plugin init|validate|inspect|pack|sign|verify|catalog|backup: offline v5 package tools; install, approve, configure and enable through the host Web/Admin")
 		return 0
 	}
 	if err := runPluginV5(args, stdout); err != nil {
@@ -33,6 +33,9 @@ func runPlugin(args []string, stdout, stderr io.Writer) int {
 }
 
 func runPluginV5(args []string, out io.Writer) error {
+	if args[0] == "backup" {
+		return backupPluginV5(args[1:], out)
+	}
 	if args[0] == "catalog" {
 		if len(args) != 1 {
 			return plugin.ErrPluginV5ManifestInvalid

@@ -1,4 +1,5 @@
 import api from "../../shared/api/client";
+import { randomRequestID } from "../../../../sdk/typescript/src/random-request-id";
 import type { ConfigEntry, ConfigValue, Coordinate } from "./v5-config";
 import type { ConfigOptions } from "./v5-config";
 import {
@@ -19,7 +20,7 @@ export const pluginV5Api = {
     const body = new FormData();
     body.append("package", archive);
     body.append("release", release);
-    body.append("idempotency_key", crypto.randomUUID());
+    body.append("idempotency_key", randomRequestID());
     return api.post<never, Envelope<{ id: string; status: string }>>(
       "/admin/plugin-v5/packages",
       body,
@@ -65,7 +66,7 @@ export const pluginV5Api = {
       stringifyExactJSON({
         ...intent,
         version: c.version,
-        idempotency_key: crypto.randomUUID(),
+        idempotency_key: randomRequestID(),
       }),
       wire,
     ),
@@ -80,7 +81,7 @@ export const pluginV5Api = {
         kind: "configure",
         version: c.version,
         expected_revision: revision,
-        idempotency_key: crypto.randomUUID(),
+        idempotency_key: randomRequestID(),
         configuration_part: "secret_refs",
         secret_refs,
       }),
@@ -97,7 +98,7 @@ export const pluginV5Api = {
         kind: "configure",
         version: c.version,
         expected_revision: revision,
-        idempotency_key: crypto.randomUUID(),
+        idempotency_key: randomRequestID(),
         values,
         configuration_part: "values",
       }),

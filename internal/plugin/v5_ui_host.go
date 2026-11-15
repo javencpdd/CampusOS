@@ -22,10 +22,11 @@ type v5UILease struct {
 	resolve identity.SessionPrincipalResolver
 	admin   bool
 	expires time.Time
+	parent  string
 }
 
-// V5UIHost is served on a dedicated origin/listener. It has no API routes,
-// bearer/cookie authentication, arbitrary proxy or platform filesystem mount.
+// V5UIHost leases immutable UI assets through a dedicated origin or a CSP
+// enforced opaque frame. Asset handlers expose no business API or host paths.
 type V5UIHost struct {
 	platform  *V5Platform
 	origin    string
@@ -67,14 +68,17 @@ func exactUIOrigin(raw string) bool {
 func NewV5UIHost(platform *V5Platform, origin string, parents []string) (*V5UIHost, error) {
 	probe := strings.Replace(origin, "{isolation}", strings.Repeat("a", 32), 1)
 	parsed, _ := url.Parse(probe)
-	if platform == nil || strings.Count(origin, "{isolation}") != 1 || !exactUIOrigin(probe) || parsed == nil || !strings.HasPrefix(parsed.Hostname(), strings.Repeat("a", 32)+".") || len(parents) < 1 || len(parents) > 8 {
+	if platform == nil || len(parents) < 1 || len(parents) > 8 || origin != "" && (strings.Count(origin, "{isolation}") != 1 || !exactUIOrigin(probe) || parsed == nil || !strings.HasPrefix(parsed.Hostname(), strings.Repeat("a", 32)+".")) {
 		return nil, ErrV5Invalid
 	}
 	h := &V5UIHost{platform: platform, origin: origin, parents: map[string]bool{}, leases: map[string]v5UILease{}, slots: make(chan struct{}, 4), now: time.Now}
-	uiDomain := strings.TrimPrefix(parsed.Hostname(), strings.Repeat("a", 32)+".")
+	uiDomain := ""
+	if parsed != nil {
+		uiDomain = strings.TrimPrefix(parsed.Hostname(), strings.Repeat("a", 32)+".")
+	}
 	for _, parent := range parents {
 		p, _ := url.Parse(parent)
-		if !exactUIOrigin(parent) || h.parents[parent] || p.Scheme == parsed.Scheme && p.Port() == parsed.Port() && strings.HasSuffix(p.Hostname(), "."+uiDomain) {
+		if !exactUIOrigin(parent) || h.parents[parent] || origin != "" && p.Scheme == parsed.Scheme && p.Port() == parsed.Port() && strings.HasSuffix(p.Hostname(), "."+uiDomain) {
 			return nil, ErrV5Invalid
 		}
 		h.parents[parent] = true
@@ -86,7 +90,12 @@ func NewV5UIHost(platform *V5Platform, origin string, parents []string) (*V5UIHo
 func (h *V5UIHost) leaseOrigin(id string) string {
 	return strings.Replace(h.origin, "{isolation}", id, 1)
 }
-func (h *V5UIHost) framePolicy() string { return strings.Replace(h.origin, "{isolation}", "*", 1) }
+func (h *V5UIHost) framePolicy() string {
+	if h.origin == "" {
+		return "'self'"
+	}
+	return "'self' " + strings.Replace(h.origin, "{isolation}", "*", 1)
+}
 func (h *V5UIHost) issue(ctx context.Context, c V5Coordinate, admin bool, parent string, resolve identity.SessionPrincipalResolver) (V5UIFacts, string, error) {
 	if h == nil || !h.parents[parent] {
 		return V5UIFacts{}, "", ErrV5Denied
@@ -94,6 +103,9 @@ func (h *V5UIHost) issue(ctx context.Context, c V5Coordinate, admin bool, parent
 	f, err := h.platform.UI(ctx, c, admin, resolve)
 	if err != nil {
 		return f, "", err
+	}
+	if f.Artifact.Isolation != "opaque" && h.origin == "" {
+		return f, "", ErrV5PlatformUnavailable
 	}
 	id := v5RandomID()
 	if id == "" {
@@ -103,8 +115,8 @@ func (h *V5UIHost) issue(ctx context.Context, c V5Coordinate, admin bool, parent
 	defer h.mu.Unlock()
 	now := h.now()
 	for id, lease := range h.leases {
-		if lease.facts == f && lease.admin == admin && now.Add(time.Minute).Before(lease.expires) {
-			return f, h.leaseOrigin(id) + "/ui/" + id + "/" + f.Artifact.Entrypoint, nil
+		if lease.facts == f && lease.admin == admin && lease.parent == parent && now.Add(time.Minute).Before(lease.expires) {
+			return f, h.assetURL(id, lease), nil
 		}
 		if !now.Before(lease.expires) {
 			delete(h.leases, id)
@@ -113,8 +125,9 @@ func (h *V5UIHost) issue(ctx context.Context, c V5Coordinate, admin bool, parent
 	if len(h.leases) >= 2048 {
 		return f, "", ErrV5PlatformUnavailable
 	}
-	h.leases[id] = v5UILease{f, resolve, admin, now.Add(10 * time.Minute)}
-	return f, h.leaseOrigin(id) + "/ui/" + id + "/" + f.Artifact.Entrypoint, nil
+	lease := v5UILease{f, resolve, admin, now.Add(10 * time.Minute), parent}
+	h.leases[id] = lease
+	return f, h.assetURL(id, lease), nil
 }
 func (h *V5UIHost) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "private, no-store")
@@ -150,7 +163,7 @@ func (h *V5UIHost) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		ok = false
 	}
 	h.mu.Unlock()
-	if !ok {
+	if !ok || lease.facts.Artifact.Isolation == "opaque" {
 		http.NotFound(w, r)
 		return
 	}
@@ -237,6 +250,9 @@ func (h *V5HTTPHandler) UIManifest(admin bool) gin.HandlerFunc {
 			}
 			origin, _ := url.Parse(src)
 			frame := gin.H{"src": src, "origin": origin.Scheme + "://" + origin.Host, "audience": audience}
+			if f.Artifact.Isolation == "opaque" {
+				frame["opaque"] = true
+			}
 			route := gin.H{"id": surface + ".route", "path": "/extensions/" + name + "/ui", "surface_id": surface, "title": name, "requires_auth": true}
 			definition := gin.H{
 				"id": surface, "version": f.Version, "type": surfaceType,

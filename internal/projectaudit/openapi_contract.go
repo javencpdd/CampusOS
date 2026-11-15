@@ -14,6 +14,13 @@ type operationProfile struct {
 }
 
 var operationProfiles = map[string]operationProfile{
+	"pluginV5Handler.CompanionConnect":  {RequestSchema: "WebCompanionConnectRequest", ResponseSchema: "WebCompanionConnectResult", AdditionalErrors: []string{"400", "403", "503"}},
+	"pluginV5Handler.CompanionPoll":     {RequestSchema: "EmptyObject", ResponseSchema: "WebCompanionPollResult", AdditionalErrors: []string{"400", "403", "503"}},
+	"pluginV5Handler.CompanionResult":   {RequestSchema: "WebCompanionResultRequest", ResponseSchema: "WebCompanionReceived", AdditionalErrors: []string{"400", "403", "503"}},
+	"pluginV5Handler.CompanionDownload": {NoBody: true, ResponseContentType: "application/octet-stream", AdditionalErrors: []string{"401", "403", "404", "503"}},
+
+	"pluginV5Handler.UIAction":             {RequestSchema: "PluginV5UIActionRequest", ResponseSchema: "PluginV5UIActionResult", AdditionalErrors: []string{"400", "401", "403", "409", "503"}},
+	"pluginV5Handler.OpaqueUIAsset":        {NoBody: true, ResponseContentType: "application/octet-stream", AdditionalErrors: []string{"404"}},
 	"pluginV5Handler.Inventory":            {ResponseSchema: "PluginV5Inventory", NoBody: true, AdditionalErrors: []string{"401", "403", "409", "503"}},
 	"pluginV5Handler.Detail":               {ResponseSchema: "PluginV5InventoryEntry", NoBody: true, AdditionalErrors: []string{"401", "403", "404", "409", "503"}},
 	"pluginV5Handler.Operation":            {ResponseSchema: "PluginV5Operation", NoBody: true, AdditionalErrors: []string{"401", "403", "404", "503"}},
@@ -217,6 +224,9 @@ var noContentHandlers = map[string]bool{
 
 func profileFor(route RouteContract) operationProfile {
 	profile := operationProfiles[route.Handler]
+	if current, ok := runtimeConfigProfile(route.OperationCode); ok {
+		profile = current
+	}
 	if current, ok := knowledgeProfile(route.OperationCode); ok {
 		profile = current
 	}
@@ -256,6 +266,11 @@ func profileFor(route RouteContract) operationProfile {
 func openAPIComponents() string {
 	return `components:
   securitySchemes:
+    companionToken:
+      type: http
+      scheme: bearer
+      bearerFormat: Opaque
+      description: Session and plugin bound client token; never a User/Admin JWT.
     bearerAuth:
       type: http
       scheme: bearer
@@ -274,7 +289,7 @@ func openAPIComponents() string {
       name: Authorization
       description: "Integration cint1_<selector>.<secret>; independent of JWT and ApiKey."
   schemas:
-` + integrationOpenAPISchemas() + knowledgeOpenAPISchemas() + aiOpenAPISchemas() + v5InstallationOpenAPISchemas() + `    EmptyObject:
+` + integrationOpenAPISchemas() + knowledgeOpenAPISchemas() + aiOpenAPISchemas() + runtimeConfigOpenAPISchemas() + webCompanionOpenAPISchemas() + v5UIActionsOpenAPISchemas() + v5InstallationOpenAPISchemas() + `    EmptyObject:
       type: object
       additionalProperties: false
     AdminDomainLoginRequest:

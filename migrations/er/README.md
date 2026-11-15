@@ -11,3 +11,15 @@
 python migrations/tools/generate_er.py
 python migrations/tools/generate_er.py --check
 ```
+
+
+## Admin Chen 视图
+
+管理端 `/architecture` 的“ER逻辑关系图”采用Chen记法，实体、属性和联系分别用矩形、椭圆与菱形，使用无箭头直线及参与/基数标记。它使用 `scripts/generate-architecture-schema.py` 生成的公开Schema事实和审阅过的逻辑引用；字段/标识符/外键来自当前SQL和迁移执行器，不读取实时数据。弱实体须有单独模型声明，不能把每个外键表自动标成弱实体。
+
+`make database-er`同时生成本目录物理表结构资料及Admin Chen事实；`make database-er-check`和`make architecture-check`检查两部分。只刷新/检查Admin事实：
+
+```bash
+python3 scripts/generate-architecture-schema.py
+python3 scripts/generate-architecture-schema.py --check
+```

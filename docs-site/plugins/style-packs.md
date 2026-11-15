@@ -1,5 +1,7 @@
 # 风格包、特效与 CampusStyleSDK
 
+> 最新更新时间：2026-11-14（Asia/Shanghai）。
+
 CampusOS 风格包不仅可以换颜色。通过目标内 CSS，它可以调整字体栈、字号、行高、字距、页面背景、页边距、内容宽度、网格、卡片和响应式布局；通过沙箱入口还可以提供 Canvas 动态特效。
 
 ## 两个系统主题版本
@@ -24,6 +26,8 @@ viewport_support:
 ```
 
 背景资源必须在 `assets` 中声明。CSS 仍必须以 `.app-container[data-campusos-web]` 为根，不能使用任意全局 CSS 或同源 JavaScript。v2 包必须同时声明 PC/移动端支持并提供响应式宽度媒体查询。风格包可以排列插件 Surface，但不能修改 Action 的 API、权限、Method、参数、确认和审计。
+
+页面入场动效结束后必须释放用于过渡的 `transform`，以便内部弹窗继续按浏览器视口定位和滚动。内置 `reveal` 和 Campus Canvas 使用 `backwards` 填充模式；避免用 `forwards`/`both` 长期保留页面容器的变换。发布前可运行 `pnpm --dir web smoke:dialogs`，检查长弹窗在桌面、手机、横屏和减少动态效果模式下的滚动，以及关闭、Escape 和卸载后的页面滚动恢复。
 
 ## 作用范围
 

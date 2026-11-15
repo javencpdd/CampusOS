@@ -479,6 +479,74 @@
     },
     {
       "method": "POST",
+      "path": "/api/v1/web-companion/connect",
+      "handler": "pluginV5Handler.CompanionConnect",
+      "module_owner": "core.plugin-platform",
+      "audience": "public",
+      "auth": "one-use-client-pair+current-bound-user-session+package-grant+user-consent",
+      "operation_code": "http.web_companion.agent.connect",
+      "legacy_aliases": [
+        "http.post.api.v1.web_companion.connect",
+        "httpapi.post.api.v1.web_companion.connect"
+      ],
+      "ownership": "pair-derived-current-user",
+      "scope": "session-plugin-client-public-read",
+      "audit": "request-log-no-content",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/web-companion/poll",
+      "handler": "pluginV5Handler.CompanionPoll",
+      "module_owner": "core.plugin-platform",
+      "audience": "public",
+      "auth": "opaque-client-token+current-bound-user-session+package-grant+user-consent",
+      "operation_code": "http.web_companion.agent.poll",
+      "legacy_aliases": [
+        "http.post.api.v1.web_companion.poll",
+        "httpapi.post.api.v1.web_companion.poll"
+      ],
+      "ownership": "pair-derived-current-user",
+      "scope": "session-plugin-client-public-read",
+      "audit": "request-log-no-content",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/web-companion/result",
+      "handler": "pluginV5Handler.CompanionResult",
+      "module_owner": "core.plugin-platform",
+      "audience": "public",
+      "auth": "opaque-client-token+current-bound-user-session+package-grant+user-consent",
+      "operation_code": "http.web_companion.agent.result",
+      "legacy_aliases": [
+        "http.post.api.v1.web_companion.result",
+        "httpapi.post.api.v1.web_companion.result"
+      ],
+      "ownership": "pair-derived-current-user",
+      "scope": "session-plugin-client-public-read",
+      "audit": "request-log-no-content",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/plugin-v5/ui-assets/:lease/*asset",
+      "handler": "pluginV5Handler.OpaqueUIAsset",
+      "module_owner": "core.plugin-platform",
+      "audience": "public",
+      "auth": "opaque-ui-lease+current-user-or-admin-session",
+      "operation_code": "http.plugin.v5.ui_asset",
+      "legacy_aliases": [
+        "http.get.api.v1.plugin_v5.ui_assets.lease.wildcardasset",
+        "httpapi.get.api.v1.plugin_v5.ui_assets.lease.wildcardasset"
+      ],
+      "ownership": "lease-derived-session-plugin",
+      "scope": "immutable-opaque-ui-assets",
+      "audit": "request-log-no-content",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
       "path": "/api/v1/auth/admin/login",
       "handler": "userHandler.AdminLogin",
       "module_owner": "core.identity",
@@ -1495,6 +1563,40 @@
       "ownership": "handler-enforced",
       "scope": "self-or-resource-owner",
       "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/web-companion/tools/:platform",
+      "handler": "pluginV5Handler.CompanionDownload",
+      "module_owner": "core.plugin-platform",
+      "audience": "authenticated",
+      "auth": "jwt+current-user-session",
+      "operation_code": "http.web_companion.user.download",
+      "legacy_aliases": [
+        "http.get.api.v1.web_companion.tools.platform",
+        "httpapi.get.api.v1.web_companion.tools.platform"
+      ],
+      "ownership": "current-user-derived",
+      "scope": "fixed-platform-client-artifact",
+      "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/plugin-v5/:publisher/:key/:version/ui-actions",
+      "handler": "pluginV5Handler.UIAction",
+      "module_owner": "core.plugin-platform",
+      "audience": "authenticated",
+      "auth": "jwt+current-user-session+current-ui-proof+package-grant+user-consent+browser-csrf",
+      "operation_code": "http.plugin.v5.user.ui_action",
+      "legacy_aliases": [
+        "http.post.api.v1.plugin_v5.publisher.key.version.ui_actions",
+        "httpapi.post.api.v1.plugin_v5.publisher.key.version.ui_actions"
+      ],
+      "ownership": "current-user-derived",
+      "scope": "published-ui-capability-self",
+      "audit": "request-log-no-content",
       "stability": "experimental"
     },
     {
@@ -3973,6 +4075,23 @@
       "legacy_aliases": [
         "http.post.api.v1.admin.identity.logout",
         "httpapi.post.api.v1.admin.identity.logout"
+      ],
+      "ownership": "resource-policy",
+      "scope": "current-admin-self",
+      "audit": "required-command+outbox",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/identity/password",
+      "handler": "d.Identity.AdminDomain.ChangePassword",
+      "module_owner": "core.identity",
+      "audience": "authenticated",
+      "auth": "jwt+current-admin-session+browser-csrf",
+      "operation_code": "http.identity.admin_self.password.change",
+      "legacy_aliases": [
+        "http.post.api.v1.admin.identity.password",
+        "httpapi.post.api.v1.admin.identity.password"
       ],
       "ownership": "resource-policy",
       "scope": "current-admin-self",
@@ -6805,6 +6924,63 @@
       "ownership": "none",
       "scope": "global",
       "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/platform/runtime-config",
+      "handler": "runtimeConfigHandler.Read",
+      "module_owner": "core.platform-api",
+      "audience": "admin",
+      "auth": "jwt+current-admin-session+permission",
+      "permission": "runtime_config:read",
+      "permission_code": "platform.runtime_config.read",
+      "operation_code": "http.platform.runtime_config.read",
+      "legacy_aliases": [
+        "http.get.api.v1.platform.runtime_config",
+        "httpapi.get.api.v1.platform.runtime_config"
+      ],
+      "ownership": "deployment-runtime-file",
+      "scope": "platform.runtime_config/current",
+      "audit": "none",
+      "stability": "experimental"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/platform/runtime-config",
+      "handler": "runtimeConfigHandler.Update",
+      "module_owner": "core.platform-api",
+      "audience": "admin",
+      "auth": "jwt+current-admin-session+permission+recent-mfa-or-current-password+browser-csrf",
+      "permission": "runtime_config:manage",
+      "permission_code": "platform.runtime_config.manage",
+      "operation_code": "http.platform.runtime_config.update",
+      "legacy_aliases": [
+        "http.put.api.v1.platform.runtime_config",
+        "httpapi.put.api.v1.platform.runtime_config"
+      ],
+      "ownership": "deployment-runtime-file",
+      "scope": "platform.runtime_config/current",
+      "audit": "required-intent-audit+outbox",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/platform/runtime-config/document",
+      "handler": "runtimeConfigHandler.Document",
+      "module_owner": "core.platform-api",
+      "audience": "admin",
+      "auth": "jwt+current-admin-session+permission+recent-mfa-or-current-password+browser-csrf",
+      "permission": "runtime_config:manage",
+      "permission_code": "platform.runtime_config.manage",
+      "operation_code": "http.platform.runtime_config.document",
+      "legacy_aliases": [
+        "http.post.api.v1.platform.runtime_config.document",
+        "httpapi.post.api.v1.platform.runtime_config.document"
+      ],
+      "ownership": "deployment-runtime-file",
+      "scope": "platform.runtime_config/current",
+      "audit": "required-intent-audit+outbox",
       "stability": "experimental"
     },
     {

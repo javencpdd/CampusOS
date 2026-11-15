@@ -5,6 +5,7 @@
         ><div class="login-header">
           <h2>CampusOS 管理后台</h2>
           <p>使用管理员用户名或邮箱登录</p>
+          <p class="initial-account-tip">空管理域首次启动默认账号：admin / admin；修改后使用新密码。</p>
         </div></template
       >
       <el-form :model="form" @submit.prevent="handleLogin" label-position="top">
@@ -103,6 +104,11 @@ async function handleLogin() {
   margin: 0;
   color: #909399;
   font-size: 14px;
+}
+.login-header .initial-account-tip {
+  margin-top: 12px;
+  font-size: 12px;
+  line-height: 1.6;
 }
 .mfa-note {
   margin: 0 0 18px;

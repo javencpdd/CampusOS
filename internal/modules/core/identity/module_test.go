@@ -2,6 +2,8 @@ package identity
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -10,6 +12,47 @@ import (
 	"github.com/campusos/CampusOS/pkg/auth"
 	"github.com/campusos/CampusOS/pkg/eventbus"
 )
+
+func TestModuleAdminBootstrapProofLengthBoundaries(t *testing.T) {
+	for _, size := range []int{0, 7, 8, 15, 16, 4096, 4097} {
+		t.Run(fmt.Sprint(size), func(t *testing.T) {
+			app := platformmodule.NewAppContext()
+			if err := BindMemoryAdapters(app); err != nil {
+				t.Fatal(err)
+			}
+			if err := app.Provide(portEventBus, eventbus.NewMemoryEventBus()); err != nil {
+				t.Fatal(err)
+			}
+			module := NewModule(Config{
+				JWT:                 auth.NewJWTManager(auth.JWTConfig{Secret: "test-user-secret", AccessTTL: time.Hour, RefreshTTL: 2 * time.Hour}),
+				PasswordHashEnabled: true, BootstrapAdminSecret: "legacy-user-bootstrap-secret",
+				AdminBootstrapSecret: strings.Repeat("x", size),
+				ChallengeActiveKeyID: "test-v1", ChallengeHMACKeys: map[string]string{"test-v1": "test-challenge-signing-secret"},
+				ChallengeIPHashSecret: "test-challenge-ip-hash-secret",
+			})
+			if err := module.Register(app); err != nil {
+				t.Fatal(err)
+			}
+			if err := module.Start(context.Background()); err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() { _ = module.Stop(context.Background()) })
+			_, err := module.adminDomainService.BootstrapSecurityAdmin(context.Background(), "operator", "operator@example.test", "synthetic-password", "test")
+			wantEnabled := size >= 8 && size <= 4096
+			if (err == nil) != wantEnabled {
+				t.Fatalf("bootstrap enabled=%v, error=%v", wantEnabled, err)
+			}
+			count, err := module.adminDomains.CountActiveSecurityAdmins(context.Background())
+			wantCount := 0
+			if wantEnabled {
+				wantCount = 1
+			}
+			if err != nil || count != wantCount {
+				t.Fatalf("administrator count=%d, want %d, error=%v", count, wantCount, err)
+			}
+		})
+	}
+}
 
 func TestMemoryProfileAndModuleExposePublicPorts(t *testing.T) {
 	app := platformmodule.NewAppContext()

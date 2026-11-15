@@ -134,18 +134,21 @@ func (s *PgV5StateStore) list(ctx context.Context, k v5RecordKind, q v5Query) ([
 		if k != v5Global || !v5OwnerValid(q.VisibleOwner) {
 			return nil, ErrV5Invalid
 		}
-		// Visibility is applied before pagination: current available versions
-		// UNION the caller's own installed versions, including revoked releases.
-		query = `SELECT r.state FROM (
-		 SELECT DISTINCT ON (cursor) state,cursor FROM (
-		  SELECT i.state, i.publisher||'/'||i.plugin_key||'@'||i.version AS cursor
+		// Select one entry per family before paging. A visible site version is
+		// the update target; own retained installs are only a cleanup fallback.
+		query = `WITH available AS (
+		  SELECT i.state, i.publisher||'/'||i.plugin_key AS cursor
 		  FROM plugin_installations i WHERE (i.state->>'installed')::boolean AND EXISTS(
 		   SELECT 1 FROM plugin_v5_admin_grants g WHERE g.publisher=i.publisher AND g.plugin_key=i.plugin_key AND g.version=i.version AND (g.state->>'approved')::boolean
 		    AND (COALESCE((g.state->>'expires_at_ms')::bigint,0)=0 OR (g.state->>'expires_at_ms')::bigint>$4))
+		), visible AS (
+		  SELECT state,cursor FROM available
 		  UNION ALL
-		  SELECT i.state,i.publisher||'/'||i.plugin_key||'@'||i.version AS cursor FROM plugin_user_installations i WHERE i.state->>'owner_user_id'=$3 AND (i.state->>'installed')::boolean
-		 ) visible ORDER BY cursor
-		) r WHERE r.cursor>$1 ORDER BY r.cursor LIMIT $2`
+		  SELECT i.state,i.publisher||'/'||i.plugin_key AS cursor
+		  FROM plugin_user_installations i
+		  WHERE i.state->>'owner_user_id'=$3 AND (i.state->>'installed')::boolean
+		   AND NOT EXISTS(SELECT 1 FROM available a WHERE a.cursor=i.publisher||'/'||i.plugin_key)
+		) SELECT r.state FROM visible r WHERE r.cursor>$1 ORDER BY r.cursor LIMIT $2`
 		args = []any{q.After, limit, q.VisibleOwner, q.Now}
 	}
 	if q.Owner != "" {

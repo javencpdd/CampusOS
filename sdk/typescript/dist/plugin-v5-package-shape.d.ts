@@ -6,6 +6,7 @@ export interface PluginV5UiArtifact {
     audience: PluginV5UiAudience;
     entrypoint: string;
     digest: string;
+    isolation?: "opaque";
 }
 export type PluginV5BackendArtifact = {
     kind: "wasm";

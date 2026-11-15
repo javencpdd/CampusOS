@@ -46,7 +46,7 @@ func (h *AdminDomainHandler) SetBootstrapSecret(secret string) {
 	h.bootstrapProof = [sha256.Size]byte{}
 	h.bootstrapConfigured = false
 	secret = strings.TrimSpace(secret)
-	if len(secret) < 16 || len(secret) > 4096 {
+	if len(secret) < 8 || len(secret) > 4096 {
 		return
 	}
 	h.bootstrapProof = sha256.Sum256([]byte(secret))
@@ -174,7 +174,7 @@ func (h *AdminDomainHandler) Logout(c *gin.Context) {
 func (h *AdminDomainHandler) Bootstrap(c *gin.Context) {
 	c.Header("Cache-Control", "private, no-store")
 	proofs := c.Request.Header.Values(AdminBootstrapSecretHeader)
-	if !h.bootstrapConfigured || h.lifecycle == nil || len(proofs) != 1 || len(proofs[0]) < 16 || len(proofs[0]) > 4096 {
+	if !h.bootstrapConfigured || h.lifecycle == nil || len(proofs) != 1 || len(proofs[0]) < 8 || len(proofs[0]) > 4096 {
 		response.Error(c, http.StatusForbidden, 20004, "bootstrap denied")
 		return
 	}

@@ -1540,6 +1540,45 @@ paths:
           $ref: '#/components/responses/Conflict'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/admin/identity/password:
+    post:
+      operationId: d_Identity_AdminDomain_ChangePassword
+      summary: POST /api/v1/admin/identity/password
+      tags: [authenticated]
+      x-campusos-stability: experimental
+      x-campusos-ownership: resource-policy
+      x-campusos-module-owner: core.identity
+      x-campusos-scope: current-admin-self
+      x-campusos-operation: http.identity.admin_self.password.change
+      x-campusos-auth: jwt+current-admin-session+browser-csrf
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: X-Admin-CSRF-Token
+          in: header
+          required: false
+          description: Required for browser/cookie requests; CLI body refresh requires explicit server compatibility configuration.
+          schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenericObject'
+      x-campusos-schema-level: generic-experimental
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/v1/admin/identity/refresh:
     post:
       operationId: d_Identity_AdminDomain_Refresh
@@ -9275,6 +9314,145 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+  /api/v1/platform/runtime-config:
+    get:
+      operationId: runtimeConfigHandler_Read
+      summary: GET /api/v1/platform/runtime-config
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: deployment-runtime-file
+      x-campusos-module-owner: core.platform-api
+      x-campusos-scope: platform.runtime_config/current
+      x-campusos-operation: http.platform.runtime_config.read
+      x-campusos-auth: jwt+current-admin-session+permission
+      x-campusos-permission: platform.runtime_config.read
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/RuntimeConfigSnapshot'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+    put:
+      operationId: runtimeConfigHandler_Update
+      summary: PUT /api/v1/platform/runtime-config
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: deployment-runtime-file
+      x-campusos-module-owner: core.platform-api
+      x-campusos-scope: platform.runtime_config/current
+      x-campusos-operation: http.platform.runtime_config.update
+      x-campusos-auth: jwt+current-admin-session+permission+recent-mfa-or-current-password+browser-csrf
+      x-campusos-permission: platform.runtime_config.manage
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: X-Admin-CSRF-Token
+          in: header
+          required: true
+          description: Must match the current administrator CSRF cookie for every configuration write.
+          schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RuntimeConfigUpdate'
+      x-campusos-schema-level: field-contract
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/RuntimeConfigSnapshot'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/platform/runtime-config/document:
+    post:
+      operationId: runtimeConfigHandler_Document
+      summary: POST /api/v1/platform/runtime-config/document
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: deployment-runtime-file
+      x-campusos-module-owner: core.platform-api
+      x-campusos-scope: platform.runtime_config/current
+      x-campusos-operation: http.platform.runtime_config.document
+      x-campusos-auth: jwt+current-admin-session+permission+recent-mfa-or-current-password+browser-csrf
+      x-campusos-permission: platform.runtime_config.manage
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: X-Admin-CSRF-Token
+          in: header
+          required: true
+          description: Must match the current administrator CSRF cookie for every configuration write.
+          schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RuntimeConfigDocumentConfirmation'
+      x-campusos-schema-level: field-contract
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/RuntimeConfigDocument'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
   /api/v1/plugin-authorizations/{name}:
     get:
       operationId: plugin_V5RetiredHTTP
@@ -10758,6 +10936,38 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+  /api/v1/plugin-v5/ui-assets/{lease}/{asset}:
+    get:
+      operationId: pluginV5Handler_OpaqueUIAsset
+      summary: GET /api/v1/plugin-v5/ui-assets/:lease/*asset
+      tags: [public]
+      x-campusos-stability: experimental
+      x-campusos-ownership: lease-derived-session-plugin
+      x-campusos-module-owner: core.plugin-platform
+      x-campusos-scope: immutable-opaque-ui-assets
+      x-campusos-operation: http.plugin.v5.ui_asset
+      x-campusos-auth: opaque-ui-lease+current-user-or-admin-session
+      parameters:
+        - name: lease
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: asset
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /api/v1/plugin-v5/{publisher}/{key}/commands:
     post:
       operationId: pluginV5Handler_Mutate
@@ -10781,6 +10991,11 @@ paths:
           required: true
           schema:
             type: string
+        - name: X-Plugin-UI-Proof
+          in: header
+          required: false
+          description: Delegated iframe configuration writes must supply the current UI proof, rechecked inside the family-locked configure transaction. Native user configuration omits this header.
+          schema: {type: string, pattern: '^sha256:[a-f0-9]{64}$'}
       requestBody:
         required: true
         content:
@@ -10946,6 +11161,67 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+  /api/v1/plugin-v5/{publisher}/{key}/{version}/ui-actions:
+    post:
+      operationId: pluginV5Handler_UIAction
+      summary: POST /api/v1/plugin-v5/:publisher/:key/:version/ui-actions
+      tags: [authenticated]
+      x-campusos-stability: experimental
+      x-campusos-ownership: current-user-derived
+      x-campusos-module-owner: core.plugin-platform
+      x-campusos-scope: published-ui-capability-self
+      x-campusos-operation: http.plugin.v5.user.ui_action
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: publisher
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: version
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: X-CSRF-Token
+          in: header
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PluginV5UIActionRequest'
+      x-campusos-schema-level: field-contract
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/PluginV5UIActionResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
   /api/v1/plugins:
     get:
       operationId: plugin_V5RetiredHTTP
@@ -15244,6 +15520,156 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+  /api/v1/web-companion/connect:
+    post:
+      operationId: pluginV5Handler_CompanionConnect
+      summary: POST /api/v1/web-companion/connect
+      tags: [public]
+      x-campusos-stability: experimental
+      x-campusos-ownership: pair-derived-current-user
+      x-campusos-module-owner: core.plugin-platform
+      x-campusos-scope: session-plugin-client-public-read
+      x-campusos-operation: http.web_companion.agent.connect
+      x-campusos-auth: one-use-client-pair+current-bound-user-session+package-grant+user-consent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WebCompanionConnectRequest'
+      x-campusos-schema-level: field-contract
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/WebCompanionConnectResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/web-companion/poll:
+    post:
+      operationId: pluginV5Handler_CompanionPoll
+      summary: POST /api/v1/web-companion/poll
+      tags: [public]
+      x-campusos-stability: experimental
+      x-campusos-ownership: pair-derived-current-user
+      x-campusos-module-owner: core.plugin-platform
+      x-campusos-scope: session-plugin-client-public-read
+      x-campusos-operation: http.web_companion.agent.poll
+      x-campusos-auth: opaque-client-token+current-bound-user-session+package-grant+user-consent
+      security:
+        - companionToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmptyObject'
+      x-campusos-schema-level: field-contract
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/WebCompanionPollResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/v1/web-companion/result:
+    post:
+      operationId: pluginV5Handler_CompanionResult
+      summary: POST /api/v1/web-companion/result
+      tags: [public]
+      x-campusos-stability: experimental
+      x-campusos-ownership: pair-derived-current-user
+      x-campusos-module-owner: core.plugin-platform
+      x-campusos-scope: session-plugin-client-public-read
+      x-campusos-operation: http.web_companion.agent.result
+      x-campusos-auth: opaque-client-token+current-bound-user-session+package-grant+user-consent
+      security:
+        - companionToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WebCompanionResultRequest'
+      x-campusos-schema-level: field-contract
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/WebCompanionReceived'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/v1/web-companion/tools/{platform}:
+    get:
+      operationId: pluginV5Handler_CompanionDownload
+      summary: GET /api/v1/web-companion/tools/:platform
+      tags: [authenticated]
+      x-campusos-stability: experimental
+      x-campusos-ownership: current-user-derived
+      x-campusos-module-owner: core.plugin-platform
+      x-campusos-scope: fixed-platform-client-artifact
+      x-campusos-operation: http.web_companion.user.download
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: platform
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
   /api/v1/web-themes:
     get:
       operationId: webThemeHandler_Catalog
@@ -15539,6 +15965,11 @@ paths:
           $ref: '#/components/responses/Forbidden'
 components:
   securitySchemes:
+    companionToken:
+      type: http
+      scheme: bearer
+      bearerFormat: Opaque
+      description: Session and plugin bound client token; never a User/Admin JWT.
     bearerAuth:
       type: http
       scheme: bearer
@@ -16745,6 +17176,174 @@ components:
       required: [updated]
       properties:
         updated: {type: boolean, enum: [true]}
+    RuntimeConfigUpdate:
+      type: object
+      additionalProperties: false
+      required: [revision]
+      properties:
+        revision: {type: string, pattern: '^[0-9a-f]{64}$'}
+        restart: {type: boolean, default: false}
+        verification_method:
+          type: string
+          enum: [password, mfa]
+          description: Password confirmation is scoped to this operation; MFA uses the current recently verified session. Omission preserves the existing session policy.
+        current_password:
+          type: string
+          minLength: 1
+          maxLength: 72
+          writeOnly: true
+          description: Required only with verification_method password. Never stored, returned, or used to upgrade session MFA strength.
+        document:
+          type: string
+          maxLength: 262144
+          writeOnly: true
+          description: Complete literal dotenv document for the fixed deployment file. Mutually exclusive with nonempty changes. Noncatalog changes require deployment tooling.
+        changes:
+          type: object
+          additionalProperties: false
+          description: Changed catalog fields only. Omit unchanged credentials; an explicit empty string clears a credential.
+          properties:
+            AUTH_ADMIN_MFA_REQUIRED: {type: string, maxLength: 4096}
+            EMAIL_PROVIDER: {type: string, maxLength: 4096}
+            EMAIL_SMTP_HOST: {type: string, maxLength: 4096}
+            EMAIL_SMTP_PORT: {type: string, maxLength: 4096}
+            EMAIL_SMTP_USERNAME: {type: string, maxLength: 4096}
+            EMAIL_SMTP_PASSWORD: {type: string, maxLength: 4096, writeOnly: true}
+            EMAIL_SMTP_FROM: {type: string, maxLength: 4096}
+            EMAIL_SMTP_TIMEOUT: {type: string, maxLength: 4096}
+            EMAIL_SMTP_STARTTLS: {type: string, maxLength: 4096}
+            CAMPUSOS_PLUGIN_UI_PARENTS: {type: string, maxLength: 4096}
+            AI_ENABLED: {type: string, maxLength: 4096}
+            AI_TIMEOUT: {type: string, maxLength: 4096}
+            AI_MAX_OUTPUT_TOKENS: {type: string, maxLength: 4096}
+            AI_MAX_CONCURRENT: {type: string, maxLength: 4096}
+    RuntimeConfigDocumentConfirmation:
+      type: object
+      additionalProperties: false
+      required: [revision, verification_method]
+      properties:
+        revision: {type: string, pattern: '^[0-9a-f]{64}$'}
+        verification_method: {type: string, enum: [password, mfa]}
+        current_password: {type: string, minLength: 1, maxLength: 72, writeOnly: true}
+    RuntimeConfigDocument:
+      type: object
+      additionalProperties: false
+      required: [content, revision]
+      properties:
+        content: {type: string, description: 'Sensitive complete dotenv. No-store. Never log or persist in browser storage.'}
+        revision: {type: string}
+    RuntimeConfigSnapshot:
+      type: object
+      additionalProperties: false
+      required: [available, revision, generation, pending, restarting, fields, deployment_keys]
+      properties:
+        available: {type: boolean}
+        revision: {type: string}
+        generation: {type: string, pattern: '^[0-9a-f]{32}$'}
+        pending: {type: boolean}
+        restarting: {type: boolean}
+        deployment_keys: {type: array, items: {type: string}, description: 'Changed noncatalog keys requiring deployment tools after this save.'}
+        fields:
+          type: array
+          items: {$ref: '#/components/schemas/RuntimeConfigField'}
+    RuntimeConfigField:
+      type: object
+      additionalProperties: false
+      required: [key, label, group, kind, help, value, active_value, configured, pending]
+      properties:
+        key: {type: string}
+        label: {type: string}
+        group: {type: string}
+        kind: {type: string, enum: [boolean, text, secret, select, number]}
+        help: {type: string}
+        options: {type: array, items: {type: string}}
+        value: {type: string, description: 'Always empty for a secret field; existing credentials are never returned.'}
+        active_value: {type: string, description: 'Active runtime value; always empty for secret fields.'}
+        configured: {type: boolean}
+        pending: {type: boolean}
+    WebCompanionClient:
+      type: object
+      additionalProperties: false
+      required: [id, name, online, expires_at, proxy_mode]
+      properties:
+        id: {type: string, pattern: '^[a-f0-9]{32}$'}
+        name: {type: string, minLength: 1, maxLength: 80}
+        online: {type: boolean}
+        expires_at: {type: integer, format: int64}
+        proxy_mode: {type: string, enum: [direct, http, https, socks5]}
+    WebCompanionConnectRequest:
+      type: object
+      additionalProperties: false
+      required: [pairing_code, name, proxy_mode]
+      properties:
+        pairing_code: {type: string, pattern: '^[a-f0-9]{32}$'}
+        name: {type: string, minLength: 1, maxLength: 80}
+        proxy_mode: {type: string, enum: [direct, http, https, socks5]}
+    WebCompanionConnectResult:
+      type: object
+      additionalProperties: false
+      required: [token, client]
+      properties:
+        token: {type: string, pattern: '^[a-f0-9]{64}$'}
+        client:
+          $ref: '#/components/schemas/WebCompanionClient'
+    WebCompanionJob:
+      type: object
+      additionalProperties: false
+      required: [id, url, max_bytes]
+      properties:
+        id: {type: string, pattern: '^[a-f0-9]{32}$'}
+        url: {type: string, minLength: 1, maxLength: 2048}
+        max_bytes: {type: integer, minimum: 1, maximum: 1048576}
+    WebCompanionPollResult:
+      type: object
+      additionalProperties: false
+      required: [job]
+      properties:
+        job:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/WebCompanionJob'
+    WebCompanionResultRequest:
+      type: object
+      additionalProperties: false
+      required: [job_id, bytes, failed]
+      properties:
+        job_id: {type: string, pattern: '^[a-f0-9]{32}$'}
+        bytes: {type: string, format: byte, maxLength: 1398104}
+        failed: {type: boolean}
+    WebCompanionReceived:
+      type: object
+      additionalProperties: false
+      required: [received]
+      properties:
+        received: {type: boolean, enum: [true]}
+    PluginV5UIActionRequest:
+      type: object
+      additionalProperties: false
+      required: [proof, action]
+      properties:
+        client_id: {type: string, pattern: '^[a-f0-9]{32}$'}
+        proof: {type: string, pattern: '^sha256:[a-f0-9]{64}$'}
+        action: {type: string, enum: [web.read, editor.article.import, web.clients.status, web.clients.pair, web.clients.select, web.clients.disconnect]}
+        url: {type: string, minLength: 1, maxLength: 2048}
+        kind: {type: string, enum: [document, image]}
+    PluginV5UIActionResult:
+      type: object
+      additionalProperties: false
+      properties:
+        scope: {type: string, pattern: '^sha256:[a-f0-9]{64}$'}
+        local_available: {type: boolean}
+        pairing_code: {type: string, pattern: '^[a-f0-9]{32}$'}
+        expires_at: {type: integer, format: int64}
+        clients:
+          type: array
+          maxItems: 64
+          items:
+            $ref: '#/components/schemas/WebCompanionClient'
+        authorized: {type: boolean}
+        bytes: {type: string, format: byte, maxLength: 1398104}
+        mime: {type: string}
     PluginV5AdminCommand:
       oneOf:
       - type: object
@@ -17163,6 +17762,7 @@ components:
           - ready
           - failed
           - stopped
+        companion_generation: {type: string, pattern: '^[0-9]+$'}
         generation:
           type: string
           pattern: ^(0|[1-9][0-9]{0,18})$
@@ -17253,6 +17853,26 @@ components:
       - error_code
       - purge_data
       - attempts
+    PluginV5SiteState:
+      type: object
+      additionalProperties: false
+      description: Display-only current visible release availability. Never authorizes execution or reveals system configuration.
+      properties:
+        installed:
+          type: boolean
+        enabled:
+          type: boolean
+        ready:
+          type: boolean
+        observed:
+          type: string
+        error_code:
+          type: string
+      required:
+      - installed
+      - enabled
+      - ready
+      - observed
     PluginV5InventoryEntry:
       type: object
       additionalProperties: false
@@ -17267,6 +17887,9 @@ components:
           type: object
         consent:
           type: object
+          description: Current user's own saved consent metadata, including on list responses; no other owner's consent.
+        site_state:
+          $ref: '#/components/schemas/PluginV5SiteState'
         configuration:
           type: object
           description: Current domain only, ordinary values and opaque Secret refs; no

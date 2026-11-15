@@ -1,3 +1,5 @@
+import { getAccessToken } from '@/modules/identity/session'
+import { handlePluginHostAction } from './pluginHostActions'
 import { pluginV5Api } from '@/modules/plugin-center/v5-api'
 import { stringifyExactJSON } from '../../../sdk/typescript/src/exact-json'
 import { richTextApi } from '@/modules/richtext/api'
@@ -25,6 +27,8 @@ export async function handleIsolatedPluginRequest(
   surface: RuntimeSurface,
   invocationID: string,
   request: PluginBridgeRequest,
+  openComposer?: (id: string) => Promise<unknown>,
+  active: () => boolean = () => true,
 ): Promise<unknown> {
   if (!surface.frame || surface.renderer !== 'isolated-iframe') throw new Error('受限插件上下文不可用。')
   const parts = surface.plugin.split('.')
@@ -33,9 +37,15 @@ export async function handleIsolatedPluginRequest(
     plugin_key: parts.slice(1).join('.'),
     version: surface.plugin_version || '',
   }
+  const token = getAccessToken()
+  const assertActive = () => {
+    if (!active() || token !== getAccessToken()) throw new Error('插件界面或用户身份已变化。')
+  }
   const current = async () => {
+    assertActive()
     if (!surface.context_proof) throw new Error('界面缺少当前版本证明。')
     const proof = await pluginV5Api.uiState(coordinate)
+    assertActive()
     if (proof.code !== 0 || proof.data?.proof !== surface.context_proof) throw new Error('界面身份、配置或授权已变化。')
   }
   await current()
@@ -50,6 +60,19 @@ export async function handleIsolatedPluginRequest(
     await current()
     return result
   }
+  if (
+    [
+      'config.update',
+      'web.read',
+      'editor.article.import',
+      'web.clients.status',
+      'web.clients.pair',
+      'web.clients.select',
+      'web.clients.disconnect',
+      'web.clients.download',
+    ].includes(request.method)
+  )
+    return handlePluginHostAction(surface, request, current, openComposer)
   if (!invocationID) throw new Error('请先在宿主中选择有权访问的资源。')
   if (request.method !== 'resource.describe' && request.method !== 'resource.readRange') {
     throw new Error('当前插件未获此 Bridge 方法授权。')

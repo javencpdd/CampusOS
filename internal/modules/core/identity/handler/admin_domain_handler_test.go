@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -71,6 +72,7 @@ func newAdminDomainHTTPFixture(t *testing.T) *adminDomainHTTPFixture {
 	secured.POST("/admin/identity/mfa/confirm", h.ConfirmTOTP)
 	secured.POST("/admin/identity/mfa/step-up", h.StepUp)
 	secured.POST("/admin/identity/logout", h.Logout)
+	secured.POST("/admin/identity/password", h.ChangePassword)
 	secured.POST("/admin/identity/accounts", h.CreateAccount)
 	return &adminDomainHTTPFixture{
 		router: router, lifecycle: lifecycle, userJWT: managers.User, adminJWT: managers.Admin, sessions: domainSessions, admins: admins, security: security, sessionRepo: sessions, handler: h,
@@ -120,6 +122,9 @@ func TestAdminDomainHTTPBootstrapRejectsInvalidDeploymentProof(t *testing.T) {
 	}{
 		{"not_configured", "", []string{secret}},
 		{"short_configuration", "short", []string{secret}},
+		{"seven_character_configuration", "1234567", []string{"1234567"}},
+		{"oversized_configuration", strings.Repeat("x", 4097), []string{secret}},
+		{"short_proof", secret, []string{"1234567"}},
 		{"wrong_proof", secret, []string{"another-deployment-bootstrap-proof"}},
 		{"duplicate_proof", secret, []string{secret, secret}},
 		{"oversized_proof", secret, []string{strings.Repeat("x", 4097)}},
@@ -144,6 +149,31 @@ func TestAdminDomainHTTPBootstrapRejectsInvalidDeploymentProof(t *testing.T) {
 			count, err := f.admins.CountActiveSecurityAdmins(context.Background())
 			if err != nil || count != 0 {
 				t.Fatalf("invalid proof changed accounts: count=%d err=%v", count, err)
+			}
+		})
+	}
+}
+
+func TestAdminDomainHTTPBootstrapAcceptsProofLengthBoundariesOnce(t *testing.T) {
+	for _, size := range []int{8, 15, 16, 4096} {
+		t.Run(fmt.Sprint(size), func(t *testing.T) {
+			f := newAdminDomainHTTPFixture(t)
+			secret := strings.Repeat("x", size)
+			f.handler.SetBootstrapSecret(secret)
+			payload := []byte(`{"username":"root","email":"root@example.test","password":"initial-password","reason":"first"}`)
+			for attempt, wantStatus := range []int{http.StatusOK, http.StatusForbidden} {
+				req := httptest.NewRequest(http.MethodPost, "/api/v1/admin/identity/bootstrap", bytes.NewReader(payload))
+				req.Header.Set("Content-Type", "application/json")
+				req.Header.Set(handler.AdminBootstrapSecretHeader, secret)
+				recorder := httptest.NewRecorder()
+				f.router.ServeHTTP(recorder, req)
+				if recorder.Code != wantStatus {
+					t.Fatalf("attempt %d: HTTP %d, want %d", attempt, recorder.Code, wantStatus)
+				}
+			}
+			count, err := f.admins.CountActiveSecurityAdmins(context.Background())
+			if err != nil || count != 1 {
+				t.Fatalf("expected exactly one administrator: count=%d err=%v", count, err)
 			}
 		})
 	}

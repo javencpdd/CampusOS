@@ -11,6 +11,7 @@ import (
 	"github.com/campusos/CampusOS/internal/modules/core/identity/policy"
 	identityport "github.com/campusos/CampusOS/internal/modules/core/identity/port"
 	"github.com/campusos/CampusOS/internal/modules/core/identity/repository"
+	"github.com/campusos/CampusOS/internal/platform/transaction"
 )
 
 var ErrAdminSelfUnavailable = errors.New("current admin self facts unavailable")
@@ -43,6 +44,13 @@ type AdminSelfService struct {
 }
 
 func NewAdminSelfService(s *AdminSessionService, a repository.AdminDomainRepository, m repository.AdminSecurityRepository) *AdminSelfService {
+	if s != nil && s.reliable != nil {
+		for _, store := range []any{a, m} {
+			if snapshot, ok := store.(transaction.Snapshotter); ok && !nilGovernanceAdapter(store) {
+				s.reliable.RegisterMemorySnapshotters(snapshot)
+			}
+		}
+	}
 	return &AdminSelfService{s, a, m}
 }
 

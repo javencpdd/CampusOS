@@ -13,6 +13,9 @@ import (
 
 func namedAdminQuery(code string) identityport.AdminExecutionQuery {
 	q := identityport.AdminExecutionQuery{PermissionCode: code, Scope: identityport.PolicyResourceRef{Kind: "community.board", ID: "actual-board"}}
+	if code == "platform.runtime_config.read" || code == "platform.runtime_config.manage" {
+		q.Scope = identityport.PolicyResourceRef{Kind: "platform.runtime_config", ID: "current"}
+	}
 	if code == "platform.reliability.read" {
 		q.Scope = identityport.PolicyResourceRef{Kind: "platform.event_metadata", ID: "recent"}
 	}
@@ -25,7 +28,7 @@ func namedAdminQuery(code string) identityport.AdminExecutionQuery {
 	return q
 }
 func TestAdminExecutionAuthorityExactActionDomainAndMFA(t *testing.T) {
-	for _, code := range []string{"community.thread.read", "community.thread.pin", "community.thread.lock", "community.thread.review", "community.thread.trash", "community.thread.direct_restore", "community.thread.restore", "community.thread.purge", "platform.reliability.read", "personal_space.asset.manage", "personal_space.asset.read_audit"} {
+	for _, code := range []string{"platform.runtime_config.read", "platform.runtime_config.manage", "community.thread.read", "community.thread.pin", "community.thread.lock", "community.thread.review", "community.thread.trash", "community.thread.direct_restore", "community.thread.restore", "community.thread.purge", "platform.reliability.read", "personal_space.asset.manage", "personal_space.asset.read_audit"} {
 		for _, mode := range []string{"current", "password", "expired", "other_code", "no_code", "user", "missing", "wrong_scope", "unknown"} {
 			t.Run(code+"/"+mode, func(t *testing.T) {
 				ctx := context.Background()

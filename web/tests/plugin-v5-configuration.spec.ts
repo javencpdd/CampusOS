@@ -45,7 +45,7 @@ beforeEach(() => {
 })
 afterEach(() => wrappers.splice(0).forEach((w) => w.unmount()))
 async function opened() {
-  const w = mount(View)
+  const w = mount(View, { global: { stubs: { RouterLink: true } } })
   wrappers.push(w)
   await flushPromises()
   await w.get('[aria-label="插件版本列表"] button').trigger('click')

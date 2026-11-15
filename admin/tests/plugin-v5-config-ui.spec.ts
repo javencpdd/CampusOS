@@ -17,14 +17,43 @@ vi.mock("../src/modules/identity/session", () => ({
 }));
 import View from "../src/modules/plugins/pages/PluginV5ConfigView.vue";
 it("opens the existing MFA confirmation without replaying any command", async () => {
+  mock.profile.mfa_required = true;
   const w = await opened();
   const notify = vi.fn();
   window.addEventListener("campusos:admin-mfa-step-up-required", notify);
   await w
     .findAll("header button")
-    .find((b) => b.text() === "确认管理员身份")!
+    .find((b) => b.text() === "管理员二次验证（MFA）")!
     .trigger("click");
   expect(notify).toHaveBeenCalledOnce();
+  expect(mock.configure).not.toHaveBeenCalled();
+  expect(w.text()).toContain("有效期为 15 分钟");
+  window.removeEventListener("campusos:admin-mfa-step-up-required", notify);
+});
+it("hides the MFA entry when policy is disabled and still allows ordinary saving", async () => {
+  mock.profile.mfa_required = false;
+  const w = await opened();
+  expect(w.text()).not.toContain("管理员二次验证（MFA）");
+  expect(w.text()).not.toContain("确认管理员身份");
+  expect(w.find(".mfa-confirmation").exists()).toBe(false);
+  await w.get('[aria-label="名称"]').setValue("正常保存");
+  await w.get("form").trigger("submit");
+  await flushPromises();
+  expect(mock.configure).toHaveBeenCalledOnce();
+});
+it("does not dispatch a stale MFA click after the policy changed to disabled", async () => {
+  mock.profile.mfa_required = true;
+  const w = await opened();
+  const button = w
+    .findAll("header button")
+    .find((b) => b.text() === "管理员二次验证（MFA）")!;
+  const notify = vi.fn();
+  window.addEventListener("campusos:admin-mfa-step-up-required", notify);
+  mock.profile = { ...mock.profile, mfa_required: false };
+  await button.trigger("click");
+  await flushPromises();
+  expect(notify).not.toHaveBeenCalled();
+  expect(w.find(".mfa-confirmation").exists()).toBe(false);
   expect(mock.configure).not.toHaveBeenCalled();
   window.removeEventListener("campusos:admin-mfa-step-up-required", notify);
 });

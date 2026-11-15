@@ -1,6 +1,8 @@
+export * from "./random-request-id.js";
 export const UI_CONTRACT_VERSION = "campusos.ui/v1" as const;
 export * from "./exact-json.js";
 export * from "./v5-configuration-form.js";
+export * from "./v5-lifecycle-presentation.js";
 export * from "./isolated-plugin-bridge.js";
 export * from "./plugin-frame-policy.js";
 export const CAPABILITY_CONTRACT_VERSION = "campusos.capability/v1" as const;
@@ -553,7 +555,25 @@ export type {
 } from "./plugin-v5-installation.js";
 
 export { knowledgeSearch, knowledgeSource } from "./knowledge-public.js";
-export type { KnowledgeHostTransport, KnowledgeSearchRequest, KnowledgeSourceRequest, KnowledgeReference, KnowledgeCitation, KnowledgeSearchHit, KnowledgeSearchPage, KnowledgeSource } from "./knowledge-public.js";
+export type {
+  KnowledgeHostTransport,
+  KnowledgeSearchRequest,
+  KnowledgeSourceRequest,
+  KnowledgeReference,
+  KnowledgeCitation,
+  KnowledgeSearchHit,
+  KnowledgeSearchPage,
+  KnowledgeSource,
+} from "./knowledge-public.js";
 
 export { modelChat, knowledgeAnswer } from "./ai-knowledge-host.js";
-export type { ModelProfile, AIKnowledgeCapability, AIKnowledgeTransport, ModelChatRequest, PublicAnswerRequest, ModelChatAnswer, RAGEvidence, PublicRAGAnswer } from "./ai-knowledge-host.js";
+export type {
+  ModelProfile,
+  AIKnowledgeCapability,
+  AIKnowledgeTransport,
+  ModelChatRequest,
+  PublicAnswerRequest,
+  ModelChatAnswer,
+  RAGEvidence,
+  PublicRAGAnswer,
+} from "./ai-knowledge-host.js";

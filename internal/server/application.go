@@ -6,7 +6,9 @@ import (
 	"log"
 	"time"
 
+	identityport "github.com/campusos/CampusOS/internal/modules/core/identity/port"
 	"github.com/campusos/CampusOS/internal/modules/core/identity/portadapt"
+	"github.com/campusos/CampusOS/internal/platform/runtimeconfig"
 	"github.com/campusos/CampusOS/internal/plugin"
 	"github.com/campusos/CampusOS/internal/transport/httpapi"
 	"github.com/campusos/CampusOS/pkg/auth"
@@ -56,6 +58,9 @@ func (s *Server) runApplication(infra *infrastructureBootstrap) error {
 		return err
 	}
 
+	value, _ := s.appContext.Lookup("identity.admin-execution-authority")
+	adminAuthority, _ := value.(identityport.AdminExecutionAuthorityReader)
+	configService := runtimeconfig.New(s.cfg.Managed, adminAuthority, s.reliability.Service(), s.requestRestart)
 	router := httpapi.Build(httpapi.Dependencies{
 		JWT:               s.identity.JWTManager(),
 		SessionVerifier:   s.identity.Sessions(),
@@ -89,6 +94,7 @@ func (s *Server) runApplication(infra *infrastructureBootstrap) error {
 		Knowledge:         s.knowledge.Handler(),
 		MutualAid:         s.mutualAid.Handler(),
 		Secondhand:        s.secondhand.Handler(),
+		RuntimeConfig:     runtimeconfig.NewHandler(configService, s.identity.AdminDomainSessions()),
 		PlatformLog:       s.platformLog.Handler(),
 		Moderation:        s.moderation.Handler(),
 		Reliability:       s.reliability.Handler(),

@@ -1,5 +1,7 @@
 # 配置与端口
 
+> 最新更新时间：2026-11-15（Asia/Shanghai）
+
 ## 配置加载顺序
 
 后端按以下顺序读取配置：
@@ -56,11 +58,26 @@ VITE_GITHUB_URL=https://github.com/javencpdd/CampusOS
 
 `VITE_WEB_URL` 用于 Admin 的“外观与风格包”页面打开用户端主题切换页；它不是后端 API 地址。
 
+## 插件公开读取代理
+
+最新更新时间：2026-11-15（Asia/Shanghai）。可选变量 CAMPUSOS_PLUGIN_WEB_PROXY_PROFILES 是部署者维护的 JSON 数组：
+
+```dotenv
+CAMPUSOS_PLUGIN_WEB_PROXY_PROFILES='[{"id":"clash-http","label":"服务器 Clash HTTP","url":"http://127.0.0.1:7890"},{"id":"clash-socks","label":"服务器 Clash SOCKS5","url":"socks5://127.0.0.1:7891"}]'
+CAMPUSOS_PLUGIN_WEB_PROXY_PROFILE=clash-http
+```
+
+按实际代理端口调整，最多 16 项；无效配置拒绝启动。开发/部署 Compose 均透传两项变量，修改后通过部署工具应用。127.0.0.1 指 API 进程/容器，不是远端 Windows；Docker 访问宿主 Clash 需要已配置的可达宿主地址，不自动开启 LAN 或修改系统网络。
+
+活动编号由管理员统一选定；空值是管理员选择直连，未知编号拒绝启动。插件和用户不能查询代理目录、改选线路、关闭策略或提交代理地址；用户界面仅显示读取位置，不保存服务器代理设置。地址和凭据留在宿主，所有文档、预览/导入图片统一执行管理员策略。只代理经过公网校验的 HTTPS GET，目标 IP 在代理前固定，原站 TLS 保持证书校验，失败不自动直连。详细边界见仓库 `docs/api/v1.2插件通用网页读取与编辑器交接合同.md`。
+
 ## v5 插件与隔离界面
 
 签名包由 Admin 显式导入，受管存储位于 `PLUGIN_DATA_DIR/v5`，普通配置保存在 PostgreSQL；不扫描旧 `.installed` 或源码目录自动运行。
 
-原生服务需同时配置以下三项，未配置则关闭外部 UI：
+声明 `isolation: "opaque"` 的 UI（如 RSS 2.1.0）仅需配置精确的 `CAMPUSOS_PLUGIN_UI_PARENTS`，通过本站只读资产接口加载，双重沙箱禁止同源权限，不需要通配 DNS 或额外监听。
+
+未声明 opaque 的既有 UI 继续使用独立子域，需同时配置以下三项：
 
 ```dotenv
 CAMPUSOS_PLUGIN_UI_LISTEN=127.0.0.1:3004
@@ -128,3 +145,9 @@ V12-06本地启动目录合同更新：Windows从系统API获取Program Files与
 2026-10-19：仓库提供`scripts/v12-06-windows-drill.ps1`原生验收入口，包含独占PG与HTTP/gRPC、当前授权、实际服务器恢复/正常关闭。需要真实Windows控制台及支持race的原生Go工具链；详细命令和前提见Container执行合同第6节及`.127`。Linux PowerShell只用于语法/拒绝路径验证，当前仍缺Windows实机结果，06保持进行中。
 
 2026-10-19 12:06：用户同意Windows相关内容延期，当前以已验收Linux范围推进后续开发，记录见仓库`.128`。Windows原生实机仍未验收，完整跨平台出口检查器保留；延期不会改变执行器默认关闭、本地daemon或隔离配置。
+
+## 本机助手下载目录
+
+最新更新时间：2026-11-15（Asia/Shanghai）。部署者独立执行 python3 scripts/build-web-companion.py，生成固定平台程序及 SHA256 清单；用 CAMPUSOS_WEB_COMPANION_TOOLS_DIR 指向 API 可读目录，默认 .campusos/tools/web-companion。容器须挂载已构建文件。插件安装、启用和卸载不构建或执行程序。
+
+本机读取为可选 web.local.read，需另行批准和本人同意。服务器不接收本机代理地址/口令；用户在自己电脑的助手中配置。普通服务器读取不依赖下载目录。用户步骤见[RSS 说明](/plugins/rss-publisher#可选本机抓取)，协议见仓库 docs/api/v1.2本机公开资源读取助手合同.md。

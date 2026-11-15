@@ -71,6 +71,7 @@ export interface UISurface {
     src: string
     origin: string
     audience: 'user' | 'admin'
+    opaque?: boolean
   }
   schema?: UISchemaNode
   data_contract?: Record<string, unknown>

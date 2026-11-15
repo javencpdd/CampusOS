@@ -20,6 +20,8 @@ export type AdminSelfProfile = {
 export const authApi = {
   login: (data: { username: string; password: string }) =>
     api.post("/admin/identity/login", data),
+  changePassword: (data: { current_password: string; new_password: string }) =>
+    api.post("/admin/identity/password", data),
   enrollMFA: () =>
     api.post("/admin/identity/mfa/enroll", { issuer: "CampusOS" }),
   confirmMFA: (data: { code: string }) =>

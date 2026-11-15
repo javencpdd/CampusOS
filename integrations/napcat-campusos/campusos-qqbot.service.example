@@ -1,0 +1,13 @@
+[Unit]
+Description=CampusOS QQ public documentation bot
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/env node --experimental-websocket %h/qqbot/campusos-qqbot/runner.mjs --config %h/.config/campusos-qqbot/config.json
+Restart=no
+UMask=0077
+NoNewPrivileges=true
+
+[Install]
+WantedBy=default.target

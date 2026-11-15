@@ -27,6 +27,10 @@ if (-not $env:CAMPUSOS_DEV_UID) {
 if (-not $env:CAMPUSOS_DEV_GID) {
     $env:CAMPUSOS_DEV_GID = "1000"
 }
+# A custom env file must never edit the standard deployment file by mistake.
+$env:CAMPUSOS_DEV_MANAGED_ENV_FILE = if ([System.IO.Path]::GetFullPath($EnvFile) -eq [System.IO.Path]::GetFullPath($LocalEnvFile)) {
+    "/workspace/deploy/docker/.env.dev.local"
+} else { "" }
 $ComposeArgs = @("compose", "--env-file", $EnvFile)
 if ($env:CAMPUSOS_DOCKER_PROJECT) {
     $ComposeArgs += @("--project-name", $env:CAMPUSOS_DOCKER_PROJECT)
@@ -487,7 +491,7 @@ switch ($Command) {
         Invoke-Compose @(
             "run", "--rm", "--no-deps",
             "api", "bash", "-c",
-            "mkdir -p /tmp/campusos-go-test/plugin_data /tmp/campusos-go-test/module_data && PLUGINS_DIR=/workspace/data/plugins PLUGIN_DATA_DIR=/tmp/campusos-go-test/plugin_data MODULE_DATA_DIR=/tmp/campusos-go-test/module_data RESOURCE_DIR=/workspace/data/resources GOFLAGS=-buildvcs=false go test ./... -count=1"
+            "mkdir -p /tmp/campusos-go-test/plugin_data /tmp/campusos-go-test/module_data && CAMPUSOS_MANAGED_ENV_FILE= PLUGINS_DIR=/workspace/data/plugins PLUGIN_DATA_DIR=/tmp/campusos-go-test/plugin_data MODULE_DATA_DIR=/tmp/campusos-go-test/module_data RESOURCE_DIR=/workspace/data/resources GOFLAGS=-buildvcs=false go test ./... -count=1"
         )
     }
     "shell" {

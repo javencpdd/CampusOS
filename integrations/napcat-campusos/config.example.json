@@ -1,0 +1,4 @@
+{
+  "bot": { "enabled": false, "allowedGroups": "", "siteUrl": "", "prefix": "/campus" },
+  "connection": { "url": "ws://127.0.0.1:6700/", "accessToken": "" }
+}

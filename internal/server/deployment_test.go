@@ -49,6 +49,11 @@ func TestValidateDeploymentBoundsIndependentAdminBootstrapSecret(t *testing.T) {
 		{"disabled", "", false},
 		{"independent", "independent-management-bootstrap-secret", false},
 		{"short", "short", true},
+		{"seven_characters", strings.Repeat("x", 7), true},
+		{"eight_characters", strings.Repeat("x", 8), false},
+		{"fifteen_characters", strings.Repeat("x", 15), false},
+		{"sixteen_characters", strings.Repeat("x", 16), false},
+		{"maximum", strings.Repeat("x", 4096), false},
 		{"reused_user_secret", "legacy-user-bootstrap-secret", true},
 		{"oversized", strings.Repeat("x", 4097), true},
 	} {

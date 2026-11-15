@@ -34,7 +34,8 @@
       "properties": {
         "audience": { "enum": ["user", "admin"] },
         "entrypoint": { "$ref": "#/definitions/path" },
-        "digest": { "$ref": "#/definitions/digest" }
+        "digest": { "$ref": "#/definitions/digest" },
+        "isolation": { "const": "opaque" }
       }
     },
     "backend": {

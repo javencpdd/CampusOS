@@ -59,6 +59,10 @@ jobs:
       - name: Check Git attributes, UTF-8 and line endings
         run: python scripts/check-line-endings.py
 
+      - name: Test Linux admin bootstrap command with isolated fixtures
+        if: runner.os == 'Linux'
+        run: python -m unittest scripts/test_bootstrap_admin.py -v
+
   backend:
     name: Backend Test
     runs-on: ubuntu-latest
@@ -97,6 +101,9 @@ jobs:
 
       - name: Download Go modules
         run: go mod download
+
+      - name: Test migration timing across wall-clock rollback
+        run: python3 -m unittest scripts/test_migration_timing.py -v
 
       - name: Run database migrations
         run: make migrate-up

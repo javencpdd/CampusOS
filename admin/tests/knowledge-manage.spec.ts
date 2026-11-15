@@ -15,6 +15,7 @@ const profile = ref({
     "knowledge.collection.manage",
   ],
   authentication_strength: "mfa",
+  mfa_required: true,
 });
 vi.mock("../src/modules/identity/store", () => ({
   useAdminStore: () => ({
@@ -93,7 +94,7 @@ let w: VueWrapper;
 const button = (label: string) =>
   w.findAll("button").find((b) => b.text() === label)!;
 async function render() {
-  w = mount(View);
+  w = mount(View, { global: { stubs: { 'router-link': { props: ['to'], template: '<a :href="to"><slot /></a>' } } } });
   await flushPromises();
   return w;
 }
@@ -110,6 +111,7 @@ beforeEach(() => {
       "knowledge.collection.manage",
     ],
     authentication_strength: "mfa",
+    mfa_required: true,
   };
   vi.mocked(api.collections).mockResolvedValue([state.collection]);
   vi.mocked(api.officials).mockResolvedValue([official]);
@@ -124,6 +126,26 @@ beforeEach(() => {
 });
 afterEach(() => w?.unmount());
 describe("Knowledge independent Admin management", () => {
+  it("respects the current disabled MFA policy without treating a password session as MFA", async () => {
+    profile.value.authentication_strength = 'password';
+    profile.value.mfa_required = false;
+    await choose();
+    expect(button('重试索引').attributes('disabled')).toBeUndefined();
+    expect(w.text()).not.toContain('写入前请点击页眉');
+    expect(profile.value.authentication_strength).toBe('password');
+    expect(api.saveCollection).not.toHaveBeenCalled();
+  });
+  it("links a disabled feature to its actual control and recovers through workspace refresh", async () => {
+    vi.mocked(api.collections).mockRejectedValueOnce({ machineCode: 'knowledge.disabled', status: 503 });
+    await render();
+    expect(w.get('a[href="/features"]').text()).toContain('知识检索');
+    expect(w.text()).toContain('刷新工作区');
+    expect(w.find('[aria-label="集合表单"]').exists()).toBe(false);
+    await button('刷新工作区').trigger('click'); await flushPromises();
+    expect(w.find('a[href="/features"]').exists()).toBe(false);
+    expect(w.find('[aria-label="集合表单"]').exists()).toBe(true);
+    expect(api.saveCollection).not.toHaveBeenCalled();
+  });
   it("does not request metadata without the exact read permission", async () => {
     profile.value.permission_codes = [];
     await render();

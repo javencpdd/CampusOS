@@ -16,9 +16,14 @@ import (
 
 var errV5Replay = errors.New("internal v5 operation replay")
 
+// A zero expiry is a revocable permanent grant. Finite deadlines share the
+// four-digit calendar range used by the Admin date input and exact JS millis.
+const v5MaxGrantExpiryMS int64 = 253402300799999
+
 // Mutation carries intent only. Principal, owner, current grant, desired state,
 // lease and observed health are always supplied/reloaded by the host.
 type V5Mutation struct {
+	UIProof            string                     `json:"-"`
 	Kind               string                     `json:"kind"`
 	Version            string                     `json:"version"`
 	ExpectedGeneration int64                      `json:"expected_generation,string"`
@@ -371,6 +376,9 @@ func (s *V5Platform) validateInstanceConfiguration(ctx context.Context, c V5Coor
 	return nil
 }
 func v5MutationValid(r V5Mutation, admin bool) bool {
+	if r.UIProof != "" && (admin || r.Kind != "configure" || r.ConfigurationPart != "values" || !v5Digest(r.UIProof)) {
+		return false
+	}
 	if r.ExpiresAtMS < 0 || r.ExpiresAtMS != 0 && (!admin || r.Kind != "grant") {
 		return false
 	}
@@ -465,6 +473,9 @@ func (s *V5Platform) Mutate(ctx context.Context, publisher, key string, r V5Muta
 	}
 	raw, _ := json.Marshal(r)
 	hash := v5BytesDigest(raw)
+	if r.UIProof != "" {
+		hash = v5BytesDigest(append(append(raw, 0), []byte(r.UIProof)...))
+	}
 	changed := false
 	defer func() {
 		if err == nil && changed && result.Generation > 0 {
@@ -476,6 +487,11 @@ func (s *V5Platform) Mutate(ctx context.Context, publisher, key string, r V5Muta
 	apply := func(m *PluginV5Manifest) error {
 		var e error
 		result, e = s.command(ctx, a, c, owner, r, hash, resolve, func(tx context.Context, op *V5Operation) error {
+			if r.UIProof != "" {
+				if err := s.checkConfigurationUI(tx, c, a, r.UIProof, m); err != nil {
+					return err
+				}
+			}
 			changed = true
 			return s.apply(tx, c, owner, r, m, op)
 		})
@@ -594,7 +610,7 @@ func (s *V5Platform) apply(ctx context.Context, c V5Coordinate, owner string, r 
 		if g.Consumes == nil {
 			g.Consumes = []PluginV5Consume{}
 		}
-		if g.ExpiresAtMS != 0 && (g.ExpiresAtMS <= s.now().UnixMilli() || g.ExpiresAtMS > s.now().Add(30*24*time.Hour).UnixMilli()) {
+		if g.ExpiresAtMS != 0 && (g.ExpiresAtMS <= s.now().UnixMilli() || g.ExpiresAtMS > v5MaxGrantExpiryMS) {
 			return ErrV5Invalid
 		}
 		if !v5GrantValid(m, g) {
@@ -818,6 +834,9 @@ func (s *V5Platform) queueInstall(ctx context.Context, i *V5Installation, op *V5
 		return err
 	}
 	i.Generation = n
+	if op.Kind != "configure" {
+		i.CompanionGeneration = n
+	}
 	i.PendingDataGeneration = 0
 	if i.Desired != "enabled" && (op.Kind == "disable" || op.Kind == "uninstall" || op.Kind == "revoke" || op.Kind == "grant") {
 		i.DesiredVersion = i.Version
@@ -860,13 +879,23 @@ func (s *V5Platform) compatible(ctx context.Context, i V5Installation, c V5Coord
 	return s.validateInstanceConfiguration(ctx, c, i.Owner, m)
 }
 func (s *V5Platform) purgeRelease(ctx context.Context, c V5Coordinate, r V5PackageRelease, op *V5Operation) error {
-	found, err := s.store.referenced(ctx, c)
-	if err != nil {
+	if err := s.canPurgeRelease(ctx, c); err != nil {
 		return err
 	}
-	if found {
+	op.StorageRevision = r.Revision
+	return nil
+}
+
+func (s *V5Platform) canPurgeRelease(ctx context.Context, c V5Coordinate) error {
+	global, err := s.installation(ctx, c, "")
+	if err != nil && err != ErrV5NotFound {
+		return err
+	}
+	// Users cannot execute a release that is not globally current. Their
+	// retained versions and recovery pointers may keep data associations, but
+	// no longer require a runnable copy when a verified repository copy exists.
+	if err == nil && global.Installed && (global.Version == c.Version || global.DesiredVersion == c.Version) {
 		return ErrV5Conflict
 	}
-	op.StorageRevision = r.Revision
 	return nil
 }

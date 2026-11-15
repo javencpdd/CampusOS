@@ -127,6 +127,30 @@ name_for() {
   basename "$1" | sed -E 's/\.(up|down)\.sql$//'
 }
 
+migration_clock_ms() {
+  local clock_value clock_idle clock_seconds clock_fraction
+  # Linux uptime follows the boot clock, so NTP/wall-clock corrections cannot
+  # turn a completed migration's duration negative. No extra runtime is needed.
+  if [[ -r /proc/uptime ]] &&
+     IFS=' ' read -r clock_value clock_idle </proc/uptime &&
+     [[ "$clock_value" =~ ^([0-9]+)\.([0-9]+)$ ]]; then
+    clock_seconds="${BASH_REMATCH[1]}"
+    clock_fraction="${BASH_REMATCH[2]}000"
+    clock_fraction="${clock_fraction:0:3}"
+    printf '%s\n' "$((10#$clock_seconds * 1000 + 10#$clock_fraction))"
+    return
+  fi
+  # BSD/busybox date may print a literal %N and still exit successfully.
+  # Validate its output before arithmetic, falling back to whole seconds.
+  clock_value="$(date +%s%3N 2>/dev/null || true)"
+  if [[ ! "$clock_value" =~ ^[0-9]+$ ]]; then
+    clock_value="$(date +%s 2>/dev/null || true)"
+    [[ "$clock_value" =~ ^[0-9]+$ ]] || clock_value=0
+    clock_value="${clock_value}000"
+  fi
+  printf '%s\n' "$((10#$clock_value))"
+}
+
 validate_migration_files() {
   shopt -s nullglob
   local up_files=("$MIGRATIONS_DIR"/*.up.sql)
@@ -265,11 +289,14 @@ run_up() {
     fi
 
     echo "==> apply $name"
-    started="$(date +%s%3N 2>/dev/null || date +%s000)"
+    started="$(migration_clock_ms)"
     escaped_name="$(sql_literal "$name")"
     run_atomic_migration "$file" "INSERT INTO public.schema_migrations(version,name,checksum,execution_ms,executor,applied_at)
       VALUES ('$version','$escaped_name','$checksum',0,'$escaped_owner',NOW());"
-    elapsed=$(( $(date +%s%3N 2>/dev/null || date +%s000) - started ))
+    elapsed=$(( $(migration_clock_ms) - started ))
+    # Optional timing metadata must remain valid even on fallback clocks that
+    # jump backwards; keep the database's nonnegative constraint intact.
+    if ((elapsed < 0)); then elapsed=0; fi
     run_psql -q -c "UPDATE public.schema_migrations SET execution_ms=$elapsed WHERE version='$version';" >/dev/null
   done
   release_lock

@@ -1,0 +1,16 @@
+{
+  "name": "campusos-qqbot",
+  "plugin": "CampusOS 文档助手",
+  "version": "0.1.0",
+  "description": "指定群内查询 CampusOS 公开文档，无需模型或平台凭据",
+  "type": "module",
+  "main": "runner.mjs",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "start": "node --experimental-websocket runner.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "catalog": "node tools/catalog.mjs",
+    "check": "node tools/catalog.mjs --check && node --test tests/*.test.mjs",
+    "pack": "python3 tools/pack.py"
+  }
+}

@@ -1,30 +1,52 @@
-# 当前规划与后续路线
+# 当前进展与后续路线
 
-> 更新时间：2026-10-19
-> 当前统一版本：`v1.1.0-dev`；尚未宣布正式发布
-> 当前代码主线：`v1.1-dev`；不等于 `v1.1 Final`
+> 更新时间：2026-10-28（Asia/Shanghai）
+> 当前开发主线：`v1.2-dev`；运行版本标识：`v1.1.0-dev`；整版 Final 未完成，未宣布正式发布。
 
-历史 v0.1–v0.14 计划已归档，v1.0 计划保留为插件三层授权与数据库设计的历史审计材料。当前正在以 v1.1 的插件自包含重构作为实际开发基线。
+版本号与开发阶段承担不同职责：运行标识保持与应用、镜像和合同一致；当前实现及验收按 v1.2 主计划推进。v0.1–v0.14、v1.0 和早期 v1.1 资料用于追溯，不作为当前待办或当前功能清单。
 
-## v1.1 已落地的代码方向
+## v1.2 已落地的方向
 
-- 图文文章附件与个人文档入口、个人文件/文章读者的下载权限；
-- 根 `plugins/` 下的自包含 v4 插件源码、`.installed` 不可变发布发现；
-- `campusos.pdf-viewer` 作为外部 PDF 预览插件，使用隔离 UI 和 Bridge；
-- 管理员 Grant、用户 Consent、活动版本和资源 ACL 共同决定访问；
-- 可信市场来源与用户按市场插件 ID 的申请流程；
-- 用户添加插件时由宿主创建插件配置目录。
+| 方向 | 实现与分阶段验收范围 | 使用入口 |
+| --- | --- | --- |
+| 独立身份与资源权限 | User/Admin 身份域、Integration 凭据、当前来源/owner/Scope 复核、必需审计；最新初始化与可选 MFA 变更另见下文 | [管理员初始化](/deployment/bootstrap-security)、[权限配置](/guide/permission-configuration) |
+| v5 插件平台 | 显式签名导入、分域安装、配置与授权、隔离 UI、有限 Wasm/Container Runtime、升级与检查点回退 | [插件体系](/plugins/overview) |
+| 公开知识 | 集合/来源规则、持久索引任务、词法检索、当前引用、独立 Admin 管理和诊断、受控公开 MCP/Host/SDK | [公开检索](/guide/public-knowledge-search) |
+| 私人知识 | 本人逐项选择、加密保护、任务与状态、私人检索、撤回及恢复围栏 | [我的私人知识](/guide/private-knowledge) |
+| AI 与有据问答 | 受管本机/远程文本模型、预算与取消、公开引用问答、私人逐次发送同意、插件双向接入 | [受管模型](/guide/managed-ai)、[有据问答](/guide/cited-rag)、[插件 AI](/guide/plugin-ai-knowledge) |
+| 恢复与浏览器 | 独占数据库、容量读、作者包、原生/Docker 官方恢复与七视口浏览器等子门禁已有独立记录 | [备份恢复](/operations/recovery)、[发布门禁](/deployment/release) |
 
-## 仍需证据或后续实施
+这些是各自冻结代码与目标下的阶段证据；后续改动不能自动继承旧报告，子门禁通过也不等于当前整版 Final 已通过。
 
-- 完整浏览器/LAN/目标 Linux 验收、撤销和恢复演练、规模性能证据；
-- 插件Windows Container目标验收按用户要求延期（Linux范围已验收）；Linux插件升级回滚和跨版本数据迁移继续按依赖实施；
-- 自动下载/安装公共市场插件、Office/音视频预览、多节点生产能力。
+## 最新变更与仍需完成的验收
 
-完整范围与逐项状态在仓库的[项目计划书 v1.1](https://github.com/javencpdd/CampusOS/tree/main/docs/%E9%A1%B9%E7%9B%AE%E8%AE%A1%E5%88%92%E4%B9%A6v1/%E9%A1%B9%E7%9B%AE%E8%AE%A1%E5%88%92v1.1)和[进度记录](https://github.com/javencpdd/CampusOS/tree/main/docs/%E8%BF%9B%E5%BA%A6/v1.1-dev)中维护。开发者入口见[PDF Viewer 教程](/plugins/pdf-viewer-tutorial)。
+### 管理员初始化与 MFA
 
-## v1.2 当前阶段
+`.168`–`.170` 修复独立管理域的首次初始化证明，完善部署 MFA 开关与认证器引导。MFA 默认开启，部署者可显式关闭；真实会话不会因此被伪造成 MFA 强度。
 
-更新时间：2026-10-19（Asia/Shanghai）。G0/G1、01a/01b、02a/02d/02b/02c、03a/03b/03c与04已按各自范围退出；05提供 Linux 原生宿主的固定 worker Wasm 执行及实际资源/生命周期验收，配置见[Wasm 执行器](/deployment/configuration#v12-05-wasm-执行器)。v4源码自动发现与旧控制入口已退役，以上v1.1段落仅记录历史代码方向。当前权威状态为仓库v1.2主计划、`.123`与`v12-05-runtime-exit-linux.json`；Container/Windows 为06，作者SDK为08a，内建AI/RAG绑定为14c，尚非v1.2 Final。
+当前实现、定向自动化、Go/race、Admin 构建及合同检查已有记录；没有代用户创建或重置真实账号，也没有将真实认证器操作或关闭配置算作已验收。操作入口见[初始管理员安全](/deployment/bootstrap-security)与[管理员 MFA](/operations/mfa)。
 
-V12-06当前Linux Container的有限HTTP/gRPC、硬隔离与受管生命周期见[Container执行器](/deployment/configuration#v12-06-container-执行器)、仓库`.127`和`v12-06-runtime-portable-linux.json`。Linux实现/自动化/目标已通过；2026-10-19用户同意Windows相关内容延期（`.128`），Windows仍未验收、完整跨平台06尚未退出。后续Linux阶段按Linux依赖继续推进；本轮仅同步范围，07未实施。以上`.123`段落保留05当时边界。
+### Windows Docker 与局域网
+
+本版 Windows 必需目标已确定为 **Docker Desktop Linux 容器**。当前本机自动化、公开页面与主机侧 LAN 规则/端口检查已有记录；第二台设备的登录、插件隔离域及个人文档/文章附件 PDF 仍待用户反馈。原生 Windows Go 宿主不再作为本版必需验收，历史失败记录保留。
+
+### 当前 Linux Final 候选
+
+仍需按最新源码完成默认完整 `make release-check`、只读宿主双包 Runtime、联合身份/权限/AI/RAG/MCP、恢复/容量和最终发布证据。历史完整或部分子报告都不能替代最后候选的实际结果。
+
+## 如何核对完成度
+
+实现、自动化验收、目标环境验收和正式发布是不同状态。仓库内的当前权威材料为：
+
+- `docs/项目计划书v1/项目计划v1.2/00-v1.2版本优化计划书.md`：阶段、依赖和验收范围；
+- 同目录 `02-v1.2Final验收清单.md`：整版联合要求与剩余项目；
+- `docs/进度/v1.2-dev/`：每次改动的实际结果、更新时间、限制和原始证据路径；
+- `.168`–`.170`：当前 Windows Docker/LAN、初始化及 MFA 的增量记录。
+
+不能按文件名中的旧版本、单次构建或摘要推断已完成。公共站点介绍更新也不提升产品发布状态。
+
+## 后续探索
+
+候选方向包括更丰富的知识来源、Office/OCR、向量与重排、复杂共享以及 Agent 能力。它们需要另行明确需求、合同和验收，不是本次官网或当前版本已交付的承诺。
+
+希望参与可阅读[贡献流程](/contributing/workflow)；第一次接触项目可从[项目介绍](/guide/introduction)开始。

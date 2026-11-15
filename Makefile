@@ -113,6 +113,12 @@ v12-g1-exit-check:
 plugin-v5-check:
 	go run ./cmd/campusos-plugin-v5-check -root plugins
 
+.PHONY: qqbot-check
+qqbot-check:
+	node integrations/napcat-campusos/tools/catalog.mjs --check
+	node --test integrations/napcat-campusos/tests/*.test.mjs
+	python3 -m unittest scripts/test_napcat_group.py
+
 .PHONY: capability-contract-write
 capability-contract-write:
 	go run ./cmd/campusos-capability-contract --write
@@ -151,6 +157,7 @@ readme-check:
 	python3 skills/sources/campusos-readme-update/scripts/check_readme_links.py --root . README.md docs/README.md
 
 version-check:
+	python3 -m unittest scripts/test_version_sync.py
 	python3 scripts/check-version-sync.py
 
 architecture-check:
@@ -159,12 +166,16 @@ architecture-check:
 	python3 scripts/test-architecture-checks.py
 	python3 skills/sources/campusos-data-architecture-sync/scripts/check_architecture_sync.py --root .
 	python3 migrations/tools/generate_er.py --check
+	python3 scripts/generate-architecture-schema.py --check
+	python3 -m unittest scripts/test_architecture_schema.py
 
 database-er:
 	python3 migrations/tools/generate_er.py
+	python3 scripts/generate-architecture-schema.py
 
 database-er-check:
 	python3 migrations/tools/generate_er.py --check
+	python3 scripts/generate-architecture-schema.py --check
 
 reliability-check:
 	python3 scripts/check-reliability-boundaries.py

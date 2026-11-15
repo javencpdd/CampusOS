@@ -25,7 +25,7 @@ func CurrentPluginV5Catalogs() ([]byte, []byte) {
 	for _, code := range []string{"ui.resource.selected.read", "ui.surface.open"} {
 		items = append(items, v5HostCapability{Code: code, ScopeKind: "self", DataClassification: "sensitive", ConsentRequired: true})
 	}
-	for _, code := range []string{V5AIChatLocal, V5AIChatRemote} {
+	for _, code := range []string{V5AIChatLocal, V5AIChatRemote, V5ArticleCompose, V5WebPublicRead, V5WebLocalRead} {
 		items = append(items, v5HostCapability{Code: code, ScopeKind: "self", DataClassification: "sensitive", ConsentRequired: true})
 	}
 	wireItems := []any{}

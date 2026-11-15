@@ -54,6 +54,7 @@ docs-site/.vitepress/.temp/
 deploy/docker/.env.dev.local
 .env
 .env.docker
+.env.campusos-config-*
 .env.components/
 .env.production
 *.pem

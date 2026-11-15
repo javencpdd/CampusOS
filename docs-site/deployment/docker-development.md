@@ -1,6 +1,6 @@
 # Docker 跨平台开发环境
 
-> 更新时间：2026-10-27（Asia/Shanghai）
+> 更新时间：2026-10-29（Asia/Shanghai）
 
 这套开发环境让 Windows 和 Linux 开发者只安装 Git、Docker 与 Compose v2，就能修改并运行 CampusOS。
 Go、Node.js、pnpm、PostgreSQL、Redis 和 NATS 都在 Linux 容器中，不依赖 Ubuntu 22.04 宿主。
@@ -90,6 +90,8 @@ Set-ExecutionPolicy -Scope Process Bypass
 绑定时，应配置 SMTP；只开发 API 或使用预置开发管理员时可以保留 `fake`。
 自动导入只是一次兼容迁移；创建后以 `.env.dev.local` 为两种共享开发模式的配置事实源。
 
+已有 `.env.dev.local` 会被完整保留，后续 `setup` 不会用新版 `.env.dev.example` 覆盖它，包括模板新增的注释。因此旧配置文件的说明可能少于模板；配置值仍只修改 `.env.dev.local`，需要时将模板中的字段说明同步到对应项。仅补注释无需重启或执行 `up`。
+
 插件 Secret 换加密密钥时，在本地配置中同时设置 `CAMPUSOS_SECRET_ACTIVE_KEY_ID` 和 `CAMPUSOS_SECRET_ENCRYPTION_KEYS`；后者用 `key-id:32字节hex或Base64`、逗号分隔列出当前及仍被旧密文引用的密钥。新写入只用 active ID，后台默认关闭，旧行需运维命令或显式开启 Worker 才会重加密；缺少旧 ID 时读取拒绝。改动配置后运行 `docker-dev.* up` 使 API 容器重新读取环境，勿把密钥写入插件包或前端。未设置这两个变量时仍使用旧的单密钥配置。
 
 显式设置 `CAMPUSOS_SECRET_ROTATION_ENABLED=true` 可启用后台活跃行重封装，默认关闭；`CAMPUSOS_SECRET_ROTATION_INTERVAL` 默认 `5m`（1s–24h）。它需要 PostgreSQL 和完整旧读 Keyring，首次处理等待一个周期，每轮最多 25 插件、每插件 100 行；坏密文插件记录失败并继续其他插件，租约/审计基础设施故障停止 Worker，修复后重启。历史/撤销行及旧备份仍需旧 key，退钥前使用宿主 `campusosctl secret inspect-key --key-id ID` 核对全表引用与恢复需求；零快照不证明备份无引用。修改配置后运行 `docker-dev.* up` 应用到 API 进程。
@@ -165,7 +167,7 @@ CAMPUSOS_DEV_PLUGIN_UI_BIND=0.0.0.0
 
 Linux、WSL2 或 Git Bash 使用 `./scripts/docker-dev.sh lan-check`。Windows 会读取活动网卡、网络类别和项目
 防火墙规则；Linux 会优先读取默认路由网卡的 IPv4/子网，并根据 UFW、firewalld 或 nftables/iptables 给出
-防火墙提示。两端都会列出 Web/Admin/Docs URL 和插件 UI 网关健康检查，同时生成供另一台局域网主机执行的 Windows
+防火墙提示。两端都会列出 Web/Admin/Docs URL 和插件 UI 网关健康检查，并检查API实际配置中的隔离域名、DNS/HTTP与精确父Origin；3003的IP健康检查通过不代表`*.localhost`适合远程浏览器。同时生成供另一台局域网主机执行的 Windows
 `Test-NetConnection` 与 Linux/macOS `curl`、`nc` 命令。`LOCAL READY` 只证明开发机自身通过 LAN 地址访问
 正常；只有另一台主机实测才能发现宿主入站策略或路由器 AP/客户端隔离。
 
@@ -234,7 +236,20 @@ Remove-NetFirewallRule -Name $ruleName
 密码：Admin@123456
 ```
 
-这些固定值只允许在 loopback 开发栈使用，开放局域网前应改用自行设置的强密码。管理端使用独立 `admin_accounts`，不会自动创建默认超级用户；首次部署请按[初始管理员安全](bootstrap-security.md)设置独立初始化凭证并显式创建管理域账号。
+上面的历史兼容账号属于用户域。当前管理端使用独立 `admin_accounts`，空管理域首次启动默认创建 `admin / admin`；在3001登录后可点击“修改密码”，后续重启不覆盖已有密码。额外管理员通过 `python3 scripts/bootstrap-admin.py` 新增，不改已有账号和系统配置，详见[初始管理员安全](bootstrap-security.md)。
+
+### 基础镜像清单返回401
+
+若 `setup --start` / `setup -Start` 在 `load metadata for docker.io/library/node` 阶段失败，并显示对 `registry-1.docker.io` 的清单 `HEAD` 请求返回 `401 Unauthorized`，先单独验证当前基础镜像：
+
+```bash
+docker pull node:22-bookworm-slim
+docker pull golang:1.25-bookworm
+```
+
+这一步使用Docker镜像仓库链路，与项目SMTP、JWT及管理员初始化凭证无关。未认证请求的401可能只是正常的令牌挑战；需获取对应仓库的令牌后重发请求，见[Docker Registry认证说明](https://docs.docker.com/reference/api/registry/auth/)。不能仅凭401就判定Docker账号密码错误；若拉取明确报告登录凭据无效，再核对自己的Docker Hub登录。
+
+若单独拉取成功，重新运行 `docker-dev.* build` 完成镜像构建，再执行 `docker-dev.* up`。若仍失败，先检查代理程序、认证端点与镜像仓库是否都可达。Linux Docker Engine使用daemon自己的代理；仅在当前Shell执行 `source sh/proxy.sh on` 不会改写已启动daemon的环境，配置方法见[Docker daemon代理文档](https://docs.docker.com/engine/daemon/proxy/)。Windows Docker Desktop按下节检查其代理设置。保留现有卷和构建缓存，无须为此删除数据或禁用BuildKit。
 
 ### Windows Docker Hub 代理
 
@@ -536,6 +551,36 @@ Vite 在容器内必须使用 `CAMPUSOS_API_PROXY_TARGET=http://api:8080`。不�
 
 运行 `docker-dev.* setup` 生成本地配置并修改端口。向导会在启动前报告具体冲突项。
 
+**首页首次打开连续刷新，或提示插件隔离界面暂不可用**
+
+先区分两个请求来源。Vite日志若连续出现 `new dependencies optimized` 和 `optimized dependencies changed. reloading`，表示懒加载页面发现了新的组件依赖，触发开发服务器整页重载；它与每5秒一次的Docker健康探针无关。Web/Admin入口已加载完整Element Plus样式，因此组件解析器关闭重复的按组件样式注入，避免首次打开首页及预加载页面时连续重载。修改Vite配置会重启一次开发服务器，普通源码热更新继续生效。背景见[Vite 5依赖预构建说明](https://v5.vite.dev/config/dep-optimization-options)。
+
+若 `/api/v1/plugin-v5/ui?parent_origin=...` 返回403，核对 `parent_origin` 是否精确出现在 `.env.dev.local` 的 `CAMPUSOS_PLUGIN_UI_PARENTS` 中。`localhost`、`127.0.0.1`、LAN IP和不同端口分别属于不同来源；仅设置 `CAMPUSOS_DEV_ALLOW_LAN=true` 和UI绑定，不会自动批准这些来源。例如使用开发机 `192.168.1.20:3000` 时，保留仍需使用的来源并补充：
+
+```dotenv
+CAMPUSOS_PLUGIN_UI_PARENTS="http://localhost:3000 http://localhost:3001 http://192.168.1.20:3000 http://192.168.1.20:3001"
+```
+
+改值后运行 `docker-dev.* up`，无需为此重新构建镜像。清单每4秒同步会更新页面上的插件状态，403本身不会触发整页刷新。不要将任意Host或通配符加入允许列表；远程加载真实插件资源还须满足前述通配DNS和3003网关可达条件。没有可用插件时，正常清单可以返回空数组，首页仍可使用。
+
+### 隔离插件页显示 localhost 拒绝连接
+
+本节更新时间：2026-11-15（Asia/Shanghai）。RSS 2.1.0 的 opaque 沙箱通过本站加载，不需要 3003 或通配域名；PDF 等仍使用独立子域的界面需要浏览器直接连接 3003 网关。另一台设备访问`http://192.168.1.20:3000`时，`<租约>.localhost`仍然指向那台设备自己。已加入正确Parents也不能解决这个地址问题。
+
+在`deploy/docker/.env.dev.local`同时设置下列值，并将示例IP换成实际开发机地址。已有可信LAN许可保持；其余API和数据服务继续使用回环绑定：
+
+```dotenv
+CAMPUSOS_DEV_ALLOW_LAN=true
+CAMPUSOS_DEV_PLUGIN_UI_BIND=0.0.0.0
+CAMPUSOS_PLUGIN_UI_SCHEME=http
+CAMPUSOS_PLUGIN_UI_DOMAIN=192.168.1.20.sslip.io
+CAMPUSOS_PLUGIN_UI_PARENTS="http://localhost:3000 http://localhost:3001 http://192.168.1.20:3000 http://192.168.1.20:3001"
+```
+
+此例使用[sslip.io](https://sslip.io/)的嵌入IP解析，也可以使用自己的专用通配DNS。域名须在访问设备上解析到开发机；网络DNS策略可能限制此类解析。不要去掉每个租约的隔离子域，或将插件改为与Web/Admin同源。
+
+执行`docker-dev.* up`应用，再执行`docker-dev.* lan-check`；Bash与PowerShell共用同一诊断。它会检查精确Parents、拒绝LAN使用localhost，并以隔离子域探测`/health`。配置变更会重新创建受影响的API/网关容器，旧租约随之失效；刷新用户页面后从插件中心重新打开。无需重新导入包或重新批准用途。远端设备仍须验证自己的DNS、3003入站连接和实际插件加载。
+
 **发送验证码显示成功但没有邮件**
 
 检查配置摘要是否显示 `Email provider: fake`。Fake Provider 不发送邮件；在
@@ -553,3 +598,10 @@ Vite 在容器内必须使用 `CAMPUSOS_API_PROXY_TARGET=http://api:8080`。不�
 更新时间：2026-10-18（Asia/Shanghai）。插件 UI 只来自已签名、受管且当前获批的包。API 在内部 3004 监听资源请求，Node 网关在 3003 只代理有限 `/ui/<租约>/...` 静态资源，不挂载源码目录，不构建插件，不透传认证头。每个租约有独立子域，父页还限制 iframe 可导航的域。配置、SDK 挂载或容器入口变更需 `docker-dev.* rebuild`；本轮验收使用独占 PG16、原生 race 服务与相同 Node 网关，没有重启共享开发栈。
 
 原生、Docker 和 LAN 的变量及通配 DNS/TLS 要求见[配置与端口](configuration.md#v5-插件与隔离界面)。默认父页面为 localhost:3000/3001，改用 127.0.0.1、LAN IP 或域名时须同步精确父 Origin。安装与批准不自动启用插件；真实后端 Runner 仍由 V12-05/06 实施。
+
+
+## 管理后台编辑运行配置（2026-10-29）
+
+标准 `.env.dev.local` 经 `docker-dev.* up` 注册后，可在管理端“系统与运维 → 运行配置”编辑常用运行项，选择仅保存或保存并重启 API。表单读取隐藏密钥；也可选择“打开配置文件”，验证当前管理员密码或MFA后编辑完整env，先应用到表单草稿，再确认保存。完整文件包含真实凭据，须私下编辑；上一份文件保存在私有 `.bak`，管理权限/验证/CSRF及必需意图审计通过后才写文件。API应用重启从同一文件读取白名单字段，解决容器环境快照的问题；数据库、端口、网络、挂载和主密钥仍走本机部署工具。未挂载Docker Socket、不重建镜像、不修改账号与业务数据；只在本次重启等待期间查询状态，不刷新整页。
+
+自定义 `CAMPUSOS_DOCKER_DEV_ENV` 默认关闭编辑，避免改错标准文件；原生可显式设置 `CAMPUSOS_MANAGED_ENV_FILE`。升级已有标准开发容器执行一次 `./scripts/docker-dev.sh up` 或 `.\scripts\docker-dev.ps1 up`。Linux实际保存/重启已验证，Windows仍需目标实机证据。

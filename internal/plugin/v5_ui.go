@@ -18,8 +18,17 @@ type V5UIFacts struct {
 	Generation       string             `json:"generation"`
 	GlobalGeneration string             `json:"global_generation"`
 	Proof            string             `json:"proof"`
+	ClientProof      string             `json:"-"`
 	AuthorityProof   string             `json:"authority_proof"`
 	Artifact         PluginV5UIArtifact `json:"artifact"`
+}
+
+type v5UIBinding struct {
+	Principal                                                         identity.PrincipalContext
+	PackageDigest, GlobalGeneration, Generation, SystemConfigRevision string
+	Grant                                                             V5Grant
+	Consent                                                           *V5Consent
+	ConfigRevision                                                    string
 }
 
 func (s *V5Platform) withUI(ctx context.Context, c V5Coordinate, admin bool, resolve identity.SessionPrincipalResolver, body func(V5UIFacts, *PluginV5Package) error) error {
@@ -123,26 +132,26 @@ func (s *V5Platform) withUI(ctx context.Context, c V5Coordinate, admin bool, res
 			if err != nil {
 				return err
 			}
-			binding := struct {
-				Principal                                                         identity.PrincipalContext
-				PackageDigest, GlobalGeneration, Generation, SystemConfigRevision string
-				Grant                                                             V5Grant
-				Consent                                                           *V5Consent
-				ConfigRevision                                                    string
-			}{a.p, p.Digest, v5Counter(global.Generation), v5Counter(installation.Generation), v5Counter(cfg.Revision), grant, entry.Consent, func() string {
+			binding := v5UIBinding{a.p, p.Digest, v5Counter(global.Generation), v5Counter(installation.Generation), v5Counter(cfg.Revision), grant, entry.Consent, func() string {
 				if entry.Configuration != nil {
 					return v5Counter(entry.Configuration.Revision)
 				}
 				return "0"
 			}()}
 			proof, _ := json.Marshal(binding)
+			clientBinding := binding
+			clientBinding.Generation = v5Counter(installation.CompanionGeneration)
+			clientBinding.GlobalGeneration = v5Counter(global.CompanionGeneration)
+			clientBinding.ConfigRevision = ""
+			clientBinding.SystemConfigRevision = ""
+			clientProof, _ := json.Marshal(clientBinding)
 			// Resource contexts belong to their current owner, and can be opened
 			// after a valid session rotation (including the same owner's new tab).
 			// Asset leases and Bridge sessions additionally pin the credential.
 			binding.Principal.CredentialID = ""
 			binding.Principal.AuthenticationStrength = ""
 			authority, _ := json.Marshal(binding)
-			facts := V5UIFacts{V5Coordinate: c, PackageDigest: p.Digest, Generation: v5Counter(installation.Generation), GlobalGeneration: v5Counter(global.Generation), Proof: v5BytesDigest(proof), AuthorityProof: v5BytesDigest(authority), Artifact: *artifact}
+			facts := V5UIFacts{V5Coordinate: c, PackageDigest: p.Digest, Generation: v5Counter(installation.Generation), GlobalGeneration: v5Counter(global.Generation), Proof: v5BytesDigest(proof), ClientProof: v5BytesDigest(clientProof), AuthorityProof: v5BytesDigest(authority), Artifact: *artifact}
 			return body(facts, p)
 		})
 	})
@@ -258,5 +267,63 @@ func (s *V5Platform) PDFUI(ctx context.Context, user string, resolve identity.Se
 }
 
 func v5UIUnavailable(err error) bool {
-	return errors.Is(err, ErrV5Denied) || errors.Is(err, ErrV5NotFound) || errors.Is(err, ErrV5PlatformUnavailable) || errors.Is(err, ErrV5Conflict) || errors.Is(err, ErrV5Rollback)
+	return errors.Is(err, ErrV5Denied) || errors.Is(err, ErrV5NotFound) || errors.Is(err, ErrV5PlatformUnavailable) || errors.Is(err, ErrV5Conflict) || errors.Is(err, ErrV5Rollback) || errors.Is(err, ErrPluginV5ManifestCapability)
+}
+
+// Called inside the family-locked configure transaction. Native user settings
+// need no UI proof; a delegated iframe write must still have current authority.
+func (s *V5Platform) checkConfigurationUI(ctx context.Context, c V5Coordinate, a v5Actor, expected string, m *PluginV5Manifest) error {
+	if m == nil || m.Data.ConfigScope == "system" {
+		return ErrV5Denied
+	}
+	hasUI := false
+	for _, ui := range m.UI {
+		hasUI = hasUI || ui.Audience == "user"
+	}
+	if !hasUI {
+		return ErrV5Denied
+	}
+	global, e := s.installation(ctx, c, "")
+	if e != nil {
+		return e
+	}
+	own, e := s.installation(ctx, c, a.p.Actor.ID)
+	if e != nil {
+		return e
+	}
+	usable := func(i V5Installation) bool {
+		return i.Installed && i.Version == c.Version && i.DesiredVersion == c.Version && i.Desired == "enabled" && (m.Runtime == "none" || i.Observed == "ready" && i.ActiveGeneration == i.Generation)
+	}
+	if !usable(global) || !usable(own) {
+		return ErrV5Denied
+	}
+	grant, e := s.grant(ctx, c)
+	if e != nil {
+		return e
+	}
+	if !v5GrantCompleteAt(m, grant, s.now().UnixMilli()) || !s.consentOK(ctx, c, a.p.Actor.ID, m, grant) {
+		return ErrV5Denied
+	}
+	entry, e := s.entry(ctx, c, a, true)
+	if e != nil {
+		return e
+	}
+	system, e := s.configuration(ctx, c, "", m)
+	if e != nil {
+		return e
+	}
+	release, e := s.release(ctx, c)
+	if e != nil {
+		return e
+	}
+	revision := "0"
+	if entry.Configuration != nil {
+		revision = v5Counter(entry.Configuration.Revision)
+	}
+	binding := v5UIBinding{a.p, release.Digest, v5Counter(global.Generation), v5Counter(own.Generation), v5Counter(system.Revision), grant, entry.Consent, revision}
+	raw, _ := json.Marshal(binding)
+	if v5BytesDigest(raw) != expected {
+		return ErrV5Conflict
+	}
+	return nil
 }

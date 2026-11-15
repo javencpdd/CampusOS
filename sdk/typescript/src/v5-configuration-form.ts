@@ -1,3 +1,4 @@
+import type { PluginV5UiArtifact } from "./plugin-v5-package-shape.js";
 import {
   ExactJSONNumber,
   compareExactNumbers,
@@ -23,10 +24,12 @@ export interface Coordinate {
 export interface ConfigEntry {
   release: Coordinate & {
     package_digest?: string;
+    storage?: string;
     manifest: {
       api_version: string;
       display_name?: string;
       runtime?: string;
+      ui?: PluginV5UiArtifact[];
       consumes?: any[];
       host_resources?: any;
       data: { config_scope: string };
@@ -51,6 +54,13 @@ export interface ConfigEntry {
   grant?: any;
   consent?: any;
   purpose_hash?: string;
+  site_state?: {
+    installed: boolean;
+    enabled: boolean;
+    ready: boolean;
+    observed: string;
+    error_code?: string;
+  };
 }
 export interface ConfigOptions {
   profiles: Array<{ id: string; title: string }>;

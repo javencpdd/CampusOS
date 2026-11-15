@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import type { Router } from 'vue-router'
+import { createMemoryHistory, createRouter, type Router } from 'vue-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { RuntimeRegistry } from '../src/campus-ui/runtimeRegistry'
 import type { UIRuntimeManifest } from '../src/campus-ui/contracts'
@@ -79,6 +79,31 @@ describe('Web navigation and runtime gates', () => {
 
     expect(registry.replace(runtimeManifest(1, true)).navigation).toHaveLength(1)
     expect(router.addRoute).not.toHaveBeenCalled()
+  })
+
+  it('resolves a newly available plugin from its fallback and preserves query and hash', async () => {
+    const target = '/extensions/notes/ui?tab=feed#draft'
+    window.history.replaceState({}, '', target)
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [
+        { path: '/extensions/:plugin/ui', name: 'Unavailable', component: {}, meta: { pluginUnavailable: true } },
+      ],
+    })
+    await router.push(target)
+    const replace = vi.spyOn(router, 'replace').mockResolvedValue(undefined)
+    const registry = new RuntimeRegistry(router)
+    try {
+      const manifest = runtimeManifest(1, true)
+      manifest.plugins[0].ui.routes[0].path = '/extensions/notes/ui'
+      registry.replace(manifest)
+      expect(router.resolve(target).name).toBe('plugin:notes:notes')
+      expect(replace).toHaveBeenCalledTimes(1)
+      expect(replace).toHaveBeenCalledWith(target)
+    } finally {
+      registry.clear()
+      window.history.replaceState({}, '', '/')
+    }
   })
 })
 
